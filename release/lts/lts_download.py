@@ -46,10 +46,7 @@ def generate_html(version: Version) -> str:
     Generate download urls and format them into an HTML string
     """
     today = datetime.date.today()
-    lines = []
-    lines.append(f"Released on {today.strftime(DATE_FORMAT)}.")
-    lines.append("")
-    lines.append("<ul>")
+    lines = [f"Released on {today.strftime(DATE_FORMAT)}.", "", "<ul>"]
     for file_name, display_name in get_download_file_names(version):
         download_url = get_download_url(version, file_name)
         lines.append(f"  <li><a href=\"{download_url}\">{display_name}</a></li>")

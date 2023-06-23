@@ -24,7 +24,7 @@ class SearchEnumOperator(bpy.types.Operator):
     )
 
     def execute(self, context):
-        self.report({'INFO'}, "Selected:" + self.my_search)
+        self.report({'INFO'}, f"Selected:{self.my_search}")
         return {'FINISHED'}
 
     def invoke(self, context, event):

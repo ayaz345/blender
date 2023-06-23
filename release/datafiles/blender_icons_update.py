@@ -14,10 +14,7 @@ def run(cmd, *, env=None):
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
-env = {}
-# Developers may have ASAN enabled, avoid non-zero exit codes.
-env["ASAN_OPTIONS"] = "exitcode=0:" + os.environ.get("ASAN_OPTIONS", "")
-
+env = {"ASAN_OPTIONS": "exitcode=0:" + os.environ.get("ASAN_OPTIONS", "")}
 # These NEED to be set on windows for python to initialize properly.
 if sys.platform[:3] == "win":
     env["PATHEXT"] = os.environ.get("PATHEXT", "")

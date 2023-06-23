@@ -100,10 +100,16 @@ def cmake_cache_var_iter(filepath_cmake_cache: str) -> Generator[Tuple[str, str,
 
 
 def cmake_cache_var(filepath_cmake_cache: str, var: str) -> Optional[str]:
-    for var_iter, type_iter, value_iter in cmake_cache_var_iter(filepath_cmake_cache):
-        if var == var_iter:
-            return value_iter
-    return None
+    return next(
+        (
+            value_iter
+            for var_iter, type_iter, value_iter in cmake_cache_var_iter(
+                filepath_cmake_cache
+            )
+            if var == var_iter
+        ),
+        None,
+    )
 
 
 def cmake_cache_var_or_exit(filepath_cmake_cache: str, var: str) -> str:
@@ -170,11 +176,10 @@ def main() -> None:
 
     # Get the major and minor Python version.
     python_version = cmake_cache_var_or_exit(filepath_cmake_cache, "PYTHON_VERSION")
-    python_version_number = (
-        tuple(int("".join(c for c in digit if c in string.digits)) for digit in python_version.split(".")) +
-        # Support version without a minor version "3" (add zero).
-        tuple((0, 0, 0))
-    )
+    python_version_number = tuple(
+        int("".join(c for c in digit if c in string.digits))
+        for digit in python_version.split(".")
+    ) + (0, 0, 0)
     python_version_str = "%d.%d" % python_version_number[:2]
 
     # Get Blender version.
@@ -186,14 +191,14 @@ def main() -> None:
         machine = cmake_cache_var_or_exit(filepath_cmake_cache, "CMAKE_OSX_ARCHITECTURES")
         platform_tag = "macosx_%d_%d_%s" % (int(target[0]), int(target[1]), machine)
     elif sys.platform == "win32":
-        platform_tag = "win_%s" % (platform.machine().lower())
+        platform_tag = f"win_{platform.machine().lower()}"
     elif sys.platform == "linux":
         glibc = os.confstr("CS_GNU_LIBC_VERSION")
         if glibc is None:
             sys.stderr.write("Unable to find \"CS_GNU_LIBC_VERSION\", abort!\n")
             sys.exit(1)
         glibc = "%s_%s" % tuple(glibc.split()[1].split(".")[:2])
-        platform_tag = "manylinux_%s_%s" % (glibc, platform.machine().lower())
+        platform_tag = f"manylinux_{glibc}_{platform.machine().lower()}"
     else:
         sys.stderr.write("Unsupported platform: %s, abort!\n" % (sys.platform))
         sys.exit(1)
@@ -207,7 +212,6 @@ def main() -> None:
             paths += [os.path.join("..", path, f) for f in files]
         return paths
 
-    # Ensure this wheel is marked platform specific.
     class BinaryDistribution(setuptools.dist.Distribution):
         def has_ext_modules(self) -> bool:
             return True

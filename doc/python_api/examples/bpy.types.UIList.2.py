@@ -110,10 +110,8 @@ class MESH_UL_vgroups_slow(bpy.types.UIList):
             if obj_data.is_editmode:
                 import bmesh
                 bm = bmesh.from_edit_mesh(obj_data)
-                # only ever one deform weight layer
-                dvert_lay = bm.verts.layers.deform.active
                 fact = 1 / len(bm.verts)
-                if dvert_lay:
+                if dvert_lay := bm.verts.layers.deform.active:
                     for v in bm.verts:
                         for vg_idx, vg_weight in v[dvert_lay].items():
                             ret[vg_idx][0] = False

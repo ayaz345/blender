@@ -67,16 +67,12 @@ def get_blender_git_root() -> str:
 
 
 def get_effective_architecture(args: argparse.Namespace) -> str:
-    architecture = args.architecture
-    if architecture:
+    if architecture := args.architecture:
         assert isinstance(architecture, str)
         return architecture
 
     # Check platform.version to detect arm64 with x86_64 python binary.
-    if "ARM64" in platform.version():
-        return "arm64"
-
-    return platform.machine().lower()
+    return "arm64" if "ARM64" in platform.version() else platform.machine().lower()
 
 
 def svn_update(args: argparse.Namespace, release_version: Optional[str]) -> None:
@@ -205,7 +201,10 @@ def git_update_skip(args: argparse.Namespace, check_remote_exists: bool = True) 
     # Test if there is an upstream branch configured
     if check_remote_exists:
         branch = check_output([args.git_command, "rev-parse", "--abbrev-ref", "HEAD"])
-        remote = check_output([args.git_command, "config", "branch." + branch + ".remote"], exit_on_error=False)
+        remote = check_output(
+            [args.git_command, "config", f"branch.{branch}.remote"],
+            exit_on_error=False,
+        )
         if len(remote) == 0:
             return "no remote branch to pull from"
 
@@ -234,10 +233,7 @@ def work_tree_update_upstream_workflow(args: argparse.Namespace, use_fetch: bool
         return "no_branch"
 
     retcode = call((args.git_command, "merge", "--ff-only", upstream_branch), exit_on_error=False)
-    if retcode != 0:
-        return "Unable to fast forward\n"
-
-    return ""
+    return "Unable to fast forward\n" if retcode != 0 else ""
 
 
 def work_tree_update(args: argparse.Namespace, use_fetch: bool = True) -> str:
@@ -271,7 +267,7 @@ def blender_update(args: argparse.Namespace) -> str:
 
 
 def resolve_external_url(blender_url: str, repo_name: str) -> str:
-    return urljoin(blender_url + "/", "../" + repo_name)
+    return urljoin(f"{blender_url}/", f"../{repo_name}")
 
 
 def external_script_copy_old_submodule_over(args: argparse.Namespace, directory_name: str) -> None:
@@ -381,7 +377,9 @@ def external_script_add_origin_if_needed(args: argparse.Namespace,
         upstream_url = make_utils.git_get_remote_url(args.git_command, "upstream")
 
         call((args.git_command, "remote", "rename", "upstream", "origin"))
-        make_utils.git_set_config(args.git_command, f"remote.origin.url", origin_external_url)
+        make_utils.git_set_config(
+            args.git_command, "remote.origin.url", origin_external_url
+        )
 
         call((args.git_command, "remote", "add", "upstream", upstream_url))
     finally:
@@ -417,9 +415,8 @@ def external_scripts_update(args: argparse.Namespace,
 
     try:
         os.chdir(external_dir)
-        msg = git_update_skip(args, check_remote_exists=False)
-        if msg:
-            skip_msg += directory_name + " skipped: " + msg + "\n"
+        if msg := git_update_skip(args, check_remote_exists=False):
+            skip_msg += f"{directory_name} skipped: {msg}" + "\n"
         else:
             # Find a matching branch that exists.
             for remote in ("origin", "upstream"):
@@ -445,16 +442,15 @@ def external_scripts_update(args: argparse.Namespace,
                     # automatically and fails when the branch is available in multiple remotes.
                     if make_utils.git_local_branch_exists(args.git_command, submodule_branch):
                         call([args.git_command, "checkout", submodule_branch])
-                    else:
-                        if make_utils.git_remote_branch_exists(args.git_command, "origin", submodule_branch):
-                            call([args.git_command, "checkout", "-t", f"origin/{submodule_branch}"])
-                        elif make_utils.git_remote_exist(args.git_command, "upstream"):
-                            # For the Github style of upstream workflow create a local branch from
-                            # the upstream, but do not track it, so that we stick to the paradigm
-                            # that no local branches are tracking upstream, preventing possible
-                            # accidental commit to upstream.
-                            call([args.git_command, "checkout", "-b", submodule_branch,
-                                 f"upstream/{submodule_branch}", "--no-track"])
+                    elif make_utils.git_remote_branch_exists(args.git_command, "origin", submodule_branch):
+                        call([args.git_command, "checkout", "-t", f"origin/{submodule_branch}"])
+                    elif make_utils.git_remote_exist(args.git_command, "upstream"):
+                        # For the Github style of upstream workflow create a local branch from
+                        # the upstream, but do not track it, so that we stick to the paradigm
+                        # that no local branches are tracking upstream, preventing possible
+                        # accidental commit to upstream.
+                        call([args.git_command, "checkout", "-b", submodule_branch,
+                             f"upstream/{submodule_branch}", "--no-track"])
 
                 # Don't use extra fetch since all remotes of interest have been already fetched
                 # some lines above.
@@ -506,13 +502,11 @@ if __name__ == "__main__":
         if not blender_skip_msg:
             blender_skip_msg = blender_update(args)
         if blender_skip_msg:
-            blender_skip_msg = "Blender repository skipped: " + blender_skip_msg + "\n"
+            blender_skip_msg = f"Blender repository skipped: {blender_skip_msg}" + "\n"
     if not args.no_submodules:
         submodules_skip_msg = submodules_update(args, branch)
 
-    # Report any skipped repositories at the end, so it's not as easy to miss.
-    skip_msg = blender_skip_msg + submodules_skip_msg
-    if skip_msg:
+    if skip_msg := blender_skip_msg + submodules_skip_msg:
         print_stage(skip_msg.strip())
 
     # For failed submodule update we throw an error, since not having correct

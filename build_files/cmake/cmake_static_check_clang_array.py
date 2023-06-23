@@ -42,12 +42,8 @@ def main() -> None:
         # ~    continue
 
         cmd = (
-            [CHECKER_BIN] +
-            CHECKER_ARGS +
-            [c] +
-            [("-I%s" % i) for i in inc_dirs] +
-            [("-D%s" % d) for d in defs]
-        )
+            [CHECKER_BIN] + CHECKER_ARGS + [c] + [f"-I{i}" for i in inc_dirs]
+        ) + [f"-D{d}" for d in defs]
 
         check_commands.append((c, cmd))
 

@@ -155,7 +155,7 @@ class ScalarBlendModifier(StrokeShader):
         elif self.blend_type == 'MAXIMUM':
             v1 = max(fac * v2, v1)
         else:
-            raise ValueError("unknown curve blend type: " + self.blend_type)
+            raise ValueError(f"unknown curve blend type: {self.blend_type}")
         return v1
 
 
@@ -235,7 +235,7 @@ class ThicknessBlenderMixIn(ThicknessModifierMixIn):
         elif self.position == 'RELATIVE':
             outer, inner = v * self.ratio, v - (v * self.ratio)
         else:
-            raise ValueError("unknown thickness position: " + position)
+            raise ValueError(f"unknown thickness position: {position}")
 
         self.set_thickness(svert, outer, inner)
 
@@ -279,7 +279,7 @@ class BaseThicknessShader(StrokeShader, ThicknessModifierMixIn):
             self.outer = thickness * ratio
             self.inner = thickness - self.outer
         else:
-            raise ValueError("unknown thickness position: " + position)
+            raise ValueError(f"unknown thickness position: {position}")
 
     def shade(self, stroke):
         for svert in stroke:
@@ -453,12 +453,12 @@ class ColorMaterialShader(ColorRampModifier):
         if not self.use_ramp and self.attribute in attributes:
             for svert in it:
                 material = self.func(it)
-                if self.attribute == 'LINE':
-                    b = material.line[0:3]
-                elif self.attribute == 'DIFF':
-                    b = material.diffuse[0:3]
+                if self.attribute == 'DIFF':
+                    b = material.diffuse[:3]
+                elif self.attribute == 'LINE':
+                    b = material.line[:3]
                 else:
-                    b = material.specular[0:3]
+                    b = material.specular[:3]
                 a = svert.attribute.color
                 svert.attribute.color = self.blend_ramp(a, b)
         else:
@@ -933,9 +933,7 @@ class QuantitativeInvisibilityRangeUP1D(UnaryPredicate1D):
 
 
 def getQualifiedObjectName(ob):
-    if ob.library is not None:
-        return ob.library.filepath + '/' + ob.name
-    return ob.name
+    return ob.name if ob.library is None else f'{ob.library.filepath}/{ob.name}'
 
 
 class ObjectNamesUP1D(UnaryPredicate1D):
@@ -946,14 +944,12 @@ class ObjectNamesUP1D(UnaryPredicate1D):
 
     def getViewShapeName(self, vs):
         if vs.library_path is not None and len(vs.library_path):
-            return vs.library_path + '/' + vs.name
+            return f'{vs.library_path}/{vs.name}'
         return vs.name
 
     def __call__(self, viewEdge):
         found = self.getViewShapeName(viewEdge.viewshape) in self.names
-        if self.negative:
-            return not found
-        return found
+        return not found if self.negative else found
 
 
 # -- Split by dashed line pattern -- #
@@ -1085,24 +1081,25 @@ class LengthThresholdUP1D(UnaryPredicate1D):
         length = inter.length_2d
         if self.length_min is not None and length < self.length_min:
             return False
-        if self.length_max is not None and length > self.length_max:
-            return False
-        return True
+        return self.length_max is None or length <= self.length_max
 
 
 class FaceMarkBothUP1D(UnaryPredicate1D):
     def __call__(self, inter: ViewEdge):
         fe = inter.first_fedge
         while fe is not None:
-            if fe.is_smooth:
-                if fe.face_mark:
-                    return True
-            elif (fe.nature & Nature.BORDER):
-                if fe.face_mark_left:
-                    return True
-            else:
-                if fe.face_mark_right and fe.face_mark_left:
-                    return True
+            if (
+                fe.is_smooth
+                and fe.face_mark
+                or not fe.is_smooth
+                and (fe.nature & Nature.BORDER)
+                and fe.face_mark_left
+                or not fe.is_smooth
+                and not (fe.nature & Nature.BORDER)
+                and fe.face_mark_right
+                and fe.face_mark_left
+            ):
+                return True
             fe = fe.next_fedge
         return False
 
@@ -1111,15 +1108,17 @@ class FaceMarkOneUP1D(UnaryPredicate1D):
     def __call__(self, inter: ViewEdge):
         fe = inter.first_fedge
         while fe is not None:
-            if fe.is_smooth:
-                if fe.face_mark:
-                    return True
-            elif (fe.nature & Nature.BORDER):
-                if fe.face_mark_left:
-                    return True
-            else:
-                if fe.face_mark_right or fe.face_mark_left:
-                    return True
+            if (
+                fe.is_smooth
+                and fe.face_mark
+                or not fe.is_smooth
+                and (fe.nature & Nature.BORDER)
+                and fe.face_mark_left
+                or not fe.is_smooth
+                and not (fe.nature & Nature.BORDER)
+                and (fe.face_mark_right or fe.face_mark_left)
+            ):
+                return True
             fe = fe.next_fedge
         return False
 
@@ -1151,9 +1150,7 @@ class Curvature2DAngleThresholdUP0D(UnaryPredicate0D):
         angle = pi - self.func(inter)
         if self.angle_min is not None and angle < self.angle_min:
             return True
-        if self.angle_max is not None and angle > self.angle_max:
-            return True
-        return False
+        return self.angle_max is not None and angle > self.angle_max
 
 
 class Length2DThresholdUP0D(UnaryPredicate0D):
@@ -1194,22 +1191,18 @@ def get_dashed_pattern(linestyle):
     """Extracts the dashed pattern from the various UI options """
     pattern = []
     if linestyle.dash1 > 0 and linestyle.gap1 > 0:
-        pattern.append(linestyle.dash1)
-        pattern.append(linestyle.gap1)
+        pattern.extend((linestyle.dash1, linestyle.gap1))
     if linestyle.dash2 > 0 and linestyle.gap2 > 0:
-        pattern.append(linestyle.dash2)
-        pattern.append(linestyle.gap2)
+        pattern.extend((linestyle.dash2, linestyle.gap2))
     if linestyle.dash3 > 0 and linestyle.gap3 > 0:
-        pattern.append(linestyle.dash3)
-        pattern.append(linestyle.gap3)
+        pattern.extend((linestyle.dash3, linestyle.gap3))
     return pattern
 
 
 def get_grouped_objects(group):
     for ob in group.objects:
         if ob.instance_type == 'COLLECTION' and ob.instance_collection is not None:
-            for dupli in get_grouped_objects(ob.instance_collection):
-                yield dupli
+            yield from get_grouped_objects(ob.instance_collection)
         else:
             yield ob
 

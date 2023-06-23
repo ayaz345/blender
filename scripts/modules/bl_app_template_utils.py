@@ -120,7 +120,7 @@ def import_from_path(path, *, ignore_not_found=False):
     import os
     from importlib import import_module
     base_module, template_id = path.rsplit(os.sep, 2)[-2:]
-    module_name = base_module + "." + template_id
+    module_name = f"{base_module}.{template_id}"
 
     try:
         return import_module(module_name)
@@ -168,6 +168,6 @@ def reset(*, reload_scripts=False):
     """
     template_id = _bpy.context.preferences.app_template
     if _bpy.app.debug_python:
-        print("bl_app_template_utils.reset('%s')" % template_id)
+        print(f"bl_app_template_utils.reset('{template_id}')")
 
     activate(template_id=template_id, reload_scripts=reload_scripts)

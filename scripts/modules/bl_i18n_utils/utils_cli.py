@@ -138,5 +138,5 @@ def main():
 
 
 if __name__ == "__main__":
-    print("\n\n *** Running {} *** \n".format(__file__))
+    print(f"\n\n *** Running {__file__} *** \n")
     main()

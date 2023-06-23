@@ -19,7 +19,7 @@ extension = sys.argv[2]
 install_dir = sys.argv[3]
 output_dir = sys.argv[4]
 
-package_archive = os.path.join(output_dir, package_name + '.' + extension)
+package_archive = os.path.join(output_dir, f'{package_name}.{extension}')
 package_dir = package_name
 
 # remove existing package with the same name
@@ -29,7 +29,7 @@ try:
     if os.path.exists(package_dir):
         shutil.rmtree(package_dir)
 except Exception as ex:
-    sys.stderr.write('Failed to clean up old package files: ' + str(ex) + '\n')
+    sys.stderr.write(f'Failed to clean up old package files: {str(ex)}' + '\n')
     sys.exit(1)
 
 # create temporary package dir
@@ -40,7 +40,7 @@ try:
         if f.startswith('makes'):
             os.remove(os.path.join(package_dir, f))
 except Exception as ex:
-    sys.stderr.write('Failed to copy install directory: ' + str(ex) + '\n')
+    sys.stderr.write(f'Failed to copy install directory: {str(ex)}' + '\n')
     sys.exit(1)
 
 # create archive
@@ -57,17 +57,17 @@ try:
                        '--use-compress-program=xz', package_dir]
         archive_env['XZ_OPT'] = '-9'
     else:
-        sys.stderr.write('Unknown archive extension: ' + extension)
+        sys.stderr.write(f'Unknown archive extension: {extension}')
         sys.exit(-1)
 
     subprocess.check_call(archive_cmd, env=archive_env)
 except Exception as ex:
-    sys.stderr.write('Failed to create package archive: ' + str(ex) + '\n')
+    sys.stderr.write(f'Failed to create package archive: {str(ex)}' + '\n')
     sys.exit(1)
 
 # empty temporary package dir
 try:
     shutil.rmtree(package_dir)
 except Exception as ex:
-    sys.stderr.write('Failed to clean up package directory: ' + str(ex) + '\n')
+    sys.stderr.write(f'Failed to clean up package directory: {str(ex)}' + '\n')
     sys.exit(1)

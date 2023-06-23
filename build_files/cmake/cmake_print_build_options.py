@@ -48,25 +48,34 @@ def extract_cmake_string_at_pos(file_data: str, pos_beg: int) -> Optional[str]:
     if pos_beg == pos_end:
         return None
 
-    # See: https://cmake.org/cmake/help/latest/manual/cmake-language.7.html#escape-sequences
-    text = file_data[pos_beg: pos_end].replace(
-        # Handle back-slash literals.
-        "\\\\", "\\",
-    ).replace(
-        # Handle tabs.
-        "\\t", "\t",
-    ).replace(
-        # Handle escaped quotes.
-        "\\\"", "\"",
-    ).replace(
-        # Handle tabs.
-        "\\;", ";",
-    ).replace(
-        # Handle trailing newlines.
-        "\\\n", "",
+    return (
+        file_data[pos_beg:pos_end]
+        .replace(
+            # Handle back-slash literals.
+            "\\\\",
+            "\\",
+        )
+        .replace(
+            # Handle tabs.
+            "\\t",
+            "\t",
+        )
+        .replace(
+            # Handle escaped quotes.
+            "\\\"",
+            "\"",
+        )
+        .replace(
+            # Handle tabs.
+            "\\;",
+            ";",
+        )
+        .replace(
+            # Handle trailing newlines.
+            "\\\n",
+            "",
+        )
     )
-
-    return text
 
 
 def main() -> None:

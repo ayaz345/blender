@@ -127,18 +127,14 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 
     row = split.row()
     row.prop(kmi, "map_type", text="")
-    if map_type == 'KEYBOARD':
+    if map_type in ['KEYBOARD', 'MOUSE', 'NDOF']:
         row.prop(kmi, "type", text="", full_event=True)
-    elif map_type == 'MOUSE':
-        row.prop(kmi, "type", text="", full_event=True)
-    elif map_type == 'NDOF':
-        row.prop(kmi, "type", text="", full_event=True)
+    elif map_type == 'TIMER':
+        row.prop(kmi, "type", text="")
     elif map_type == 'TWEAK':
         subrow = row.row()
         subrow.prop(kmi, "type", text="")
         subrow.prop(kmi, "value", text="")
-    elif map_type == 'TIMER':
-        row.prop(kmi, "type", text="")
     else:
         row.label()
 
@@ -200,8 +196,7 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 
         # Modal key maps attached to this operator
         if not km.is_modal:
-            kmm = kc.keymaps.find_modal(kmi.idname)
-            if kmm:
+            if kmm := kc.keymaps.find_modal(kmi.idname):
                 draw_km(display_keymaps, kc, kmm, None, layout, level + 1)
                 layout.context_pointer_set("keymap", km)
 
@@ -319,7 +314,7 @@ def draw_filtered(display_keymaps, filter_type, filter_text, layout):
                     # exception for 'type'
                     # also inspect 'key_modifier' as a fallback
                     val = kmi.key_modifier
-                    if not (val == 'NONE' or val not in ki):
+                    if val != 'NONE' and val in ki:
                         continue
                     return False
 

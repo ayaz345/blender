@@ -60,22 +60,21 @@ class Context(StructRNA):
         if isinstance(value, list) and path_rest.startswith("["):
             index_str, div, index_tail = path_rest[1:].partition("]")
             if not div:
-                raise ValueError("Path index is not terminated: %s%s" % (attr, path_rest))
+                raise ValueError(f"Path index is not terminated: {attr}{path_rest}")
             try:
                 index = int(index_str)
             except ValueError:
-                raise ValueError("Path index is invalid: %s[%s]" % (attr, index_str))
-            if 0 <= index < len(value):
-                path_rest = index_tail
-                value = value[index]
-            else:
-                raise IndexError("Path index out of range: %s[%s]" % (attr, index_str))
+                raise ValueError(f"Path index is invalid: {attr}[{index_str}]")
+            if not 0 <= index < len(value):
+                raise IndexError(f"Path index out of range: {attr}[{index_str}]")
 
+            path_rest = index_tail
+            value = value[index]
         # Resolve the rest of the path if necessary.
         if path_rest:
             path_resolve_fn = getattr(value, "path_resolve", None)
             if path_resolve_fn is None:
-                raise ValueError("Path %s resolves to a non RNA value" % attr)
+                raise ValueError(f"Path {attr} resolves to a non RNA value")
             return path_resolve_fn(path_rest, coerce)
 
         return value
@@ -270,9 +269,7 @@ class WindowManager(bpy_types.ID):
             icon='NONE',
     ):
         import bpy
-        pie = self.piemenu_begin__internal(title, icon=icon, event=event)
-
-        if pie:
+        if pie := self.piemenu_begin__internal(title, icon=icon, event=event):
             try:
                 draw_func(pie, bpy.context)
             finally:
@@ -364,8 +361,7 @@ class _GenericBone:
         parent = self.parent
 
         while parent:
-            if parent:
-                parent_list.append(parent)
+            parent_list.append(parent)
 
             parent = parent.parent
 
@@ -393,8 +389,7 @@ class _GenericBone:
         .. note:: Takes ``O(len(bones)**2)`` time."""
         bones_children = []
         for bone in self._other_bones:
-            index = bone.parent_index(self)
-            if index:
+            if index := bone.parent_index(self):
                 bones_children.append((index, bone))
 
         # sort by distance to parent
@@ -518,9 +513,7 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
 
 
 def ord_ind(i1, i2):
-    if i1 < i2:
-        return i1, i2
-    return i2, i1
+    return (i1, i2) if i1 < i2 else (i2, i1)
 
 
 class Mesh(bpy_types.ID):

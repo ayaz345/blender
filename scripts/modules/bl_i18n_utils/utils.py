@@ -59,12 +59,15 @@ _locale_explode_re = re.compile(r"^([a-z]{2,})(?:_([A-Z]{2,}))?(?:@([a-z]{2,}))?
 def locale_explode(locale):
     """Copies behavior of `BLT_lang_locale_explode`, keep them in sync."""
     ret = (None, None, None, None, None)
-    m = _locale_explode_re.match(locale)
-    if m:
+    if m := _locale_explode_re.match(locale):
         lang, country, variant = m.groups()
-        return (lang, country, variant,
-                "%s_%s" % (lang, country) if country else None,
-                "%s@%s" % (lang, variant) if variant else None)
+        return (
+            lang,
+            country,
+            variant,
+            f"{lang}_{country}" if country else None,
+            f"{lang}@{variant}" if variant else None,
+        )
 
     try:
         import bpy.app.translations as bpy_translations
@@ -148,13 +151,15 @@ def get_po_files_from_dir(root_dir, langs=set()):
             uid = p
             if langs and uid not in langs:
                 continue
-            po_file = os.path.join(root_dir, p, p + ".po")
+            po_file = os.path.join(root_dir, p, f"{p}.po")
             if not os.path.isfile(po_file):
                 continue
         else:
             continue
         if uid in found_uids:
-            print("WARNING! {} id has been found more than once! only first one has been loaded!".format(uid))
+            print(
+                f"WARNING! {uid} id has been found more than once! only first one has been loaded!"
+            )
             continue
         found_uids.add(uid)
         yield uid, po_file
@@ -169,19 +174,20 @@ def list_po_dir(root_path, settings):
 
     Note that po_path may not actually exists.
     """
-    isocodes = ((e, os.path.join(root_path, e, e + ".po")) for e in os.listdir(root_path))
+    isocodes = (
+        (e, os.path.join(root_path, e, f"{e}.po"))
+        for e in os.listdir(root_path)
+    )
     isocodes = dict(e for e in isocodes if os.path.isfile(e[1]))
     for num_id, name, uid in settings.LANGUAGES[2:]:  # Skip "default" and "en" languages!
-        best_po = find_best_isocode_matches(uid, isocodes)
-        # print(uid, "->", best_po)
-        if best_po:
+        if best_po := find_best_isocode_matches(uid, isocodes):
             isocode = best_po[0]
             yield (True, uid, num_id, name, isocode, isocodes[isocode])
         else:
             yielded = False
             language, _1, _2, language_country, language_variant = locale_explode(uid)
             for isocode in (language, language_variant, language_country, uid):
-                p = os.path.join(root_path, isocode, isocode + ".po")
+                p = os.path.join(root_path, isocode, f"{isocode}.po")
                 if not os.path.exists(p):
                     yield (True, uid, num_id, name, isocode, p)
                     yielded = True
@@ -209,8 +215,6 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
     if support is None:
         support = {}
 
-    prefs = bpy.context.preferences
-    used_ext = {ext.module for ext in prefs.addons}
     # In case we need to blacklist some add-ons...
     black_list = {}
 
@@ -222,6 +226,8 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
     ]
 
     if not check_only:
+        prefs = bpy.context.preferences
+        used_ext = {ext.module for ext in prefs.addons}
         for mod in ret:
             try:
                 module_name = mod.__name__
@@ -522,7 +528,9 @@ class I18nMessages:
             msgctxt, msgid, msgstr = msg.msgctxt, msg.msgid, msg.msgstr
             real_key = (msgctxt or default_context, msgid)
             if key != real_key:
-                ret.append("Error! msg's context/message do not match its key ({} / {})".format(real_key, key))
+                ret.append(
+                    f"Error! msg's context/message do not match its key ({real_key} / {key})"
+                )
                 if real_key in self.msgs:
                     ret.append("Error! msg's real_key already used!")
                     if fix:
@@ -532,8 +540,9 @@ class I18nMessages:
             done_keys.add(key)
             if '%' in msgid and msgstr and _format(msgid) != _format(msgstr):
                 if not msg.is_fuzzy:
-                    ret.append("Error! msg's format entities are not matched in msgid and msgstr ({} / \"{}\")"
-                               "".format(real_key, msgstr))
+                    ret.append(
+                        f"""Error! msg's format entities are not matched in msgid and msgstr ({real_key} / \"{msgstr}\")"""
+                    )
                 if fix:
                     msg.msgstr = ""
         for k in rem:
@@ -543,10 +552,9 @@ class I18nMessages:
 
     def clean_commented(self):
         self.update_info()
-        nbr = len(self.comm_msgs)
         for k in self.comm_msgs:
             del self.msgs[k]
-        return nbr
+        return len(self.comm_msgs)
 
     def rtl_process(self):
         keys = []
@@ -576,7 +584,7 @@ class I18nMessages:
             sm = self.msgs[k]
             if (sm.is_commented or m.is_commented or not m.msgstr):
                 continue
-            if (not sm.msgstr or replace or (sm.is_fuzzy and (not m.is_fuzzy or replace))):
+            if not sm.msgstr or replace or sm.is_fuzzy and not m.is_fuzzy:
                 sm.msgstr = m.msgstr
                 sm.is_fuzzy = m.is_fuzzy
 
@@ -647,9 +655,11 @@ class I18nMessages:
         for mrk in markers:
             for rl in ref.msgs[key].msgstr_lines:
                 if rl.startswith(mrk):
-                    for idx, ml in enumerate(msgs[key].msgstr_lines):
-                        if ml.startswith(mrk):
-                            rep.append((idx, rl))
+                    rep.extend(
+                        (idx, rl)
+                        for idx, ml in enumerate(msgs[key].msgstr_lines)
+                        if ml.startswith(mrk)
+                    )
         for idx, txt in rep:
             msgs[key].msgstr_lines[idx] = txt
 
@@ -714,14 +724,23 @@ class I18nMessages:
                 "{:>6.1%} of tooltips are translated ({} over {}).\n"
                 "".format(lvl_trans_ttips, self.nbr_trans_ttips, self.nbr_ttips),
                 "{:>6.1%} of translated messages are tooltips ({} over {}).\n"
-                "".format(lvl_ttips_in_trans, self.nbr_trans_ttips, self.nbr_trans_msgs),
+                "".format(
+                    lvl_ttips_in_trans, self.nbr_trans_ttips, self.nbr_trans_msgs
+                ),
                 "{:>6.1%} of messages are commented ({} over {}).\n"
-                "".format(lvl_comm, self.nbr_comm_msgs, self.nbr_comm_msgs + self.nbr_msgs),
-                "This translation is currently made of {} signs.\n".format(self.nbr_trans_signs)
+                "".format(
+                    lvl_comm,
+                    self.nbr_comm_msgs,
+                    self.nbr_comm_msgs + self.nbr_msgs,
+                ),
+                f"This translation is currently made of {self.nbr_trans_signs} signs.\n",
             ]
         if print_errors and self.parsing_errors:
             lines += ["WARNING! Errors during parsing:\n"]
-            lines += ["    Around line {}: {}\n".format(line, error) for line, error in self.parsing_errors]
+            lines += [
+                f"    Around line {line}: {error}\n"
+                for line, error in self.parsing_errors
+            ]
         output(prefix.join(lines))
 
     def invalidate_reverse_cache(self, rebuild_now=False):
@@ -809,7 +828,7 @@ class I18nMessages:
         if blbl.endswith(self.settings.NUM_BUTTON_SUFFIX):
             # Num buttons report their label with a trailing ': '...
             blbls.append(blbl[:-len(self.settings.NUM_BUTTON_SUFFIX)])
-        print("button label: " + blbl)
+        print(f"button label: {blbl}")
         if blbl and elbl not in blbls and (rlbl not in blbls or rna_ctxt != self.settings.DEFAULT_CONTEXT):
             # Always Default context for button label :/
             k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
@@ -876,7 +895,7 @@ class I18nMessages:
         del self.parsing_errors[:]
         self.parsers[kind](self, src, key)
         if self.parsing_errors:
-            print("{} ({}):".format(key, src))
+            print(f"{key} ({src}):")
             self.print_info(print_stats=False)
             print("The parser solved them as well as it could...")
         self.update_info()
@@ -938,19 +957,19 @@ class I18nMessages:
 
         _msgctxt = self.settings.PO_MSGCTXT
         _comm_msgctxt = self.settings.PO_COMMENT_PREFIX_MSG + _msgctxt
-        _len_msgctxt = len(_msgctxt + '"')
-        _len_comm_msgctxt = len(_comm_msgctxt + '"')
+        _len_msgctxt = len(f'{_msgctxt}"')
+        _len_comm_msgctxt = len(f'{_comm_msgctxt}"')
         _msgid = self.settings.PO_MSGID
         _comm_msgid = self.settings.PO_COMMENT_PREFIX_MSG + _msgid
-        _len_msgid = len(_msgid + '"')
-        _len_comm_msgid = len(_comm_msgid + '"')
+        _len_msgid = len(f'{_msgid}"')
+        _len_comm_msgid = len(f'{_comm_msgid}"')
         _msgstr = self.settings.PO_MSGSTR
         _comm_msgstr = self.settings.PO_COMMENT_PREFIX_MSG + _msgstr
-        _len_msgstr = len(_msgstr + '"')
-        _len_comm_msgstr = len(_comm_msgstr + '"')
+        _len_msgstr = len(f'{_msgstr}"')
+        _len_comm_msgstr = len(f'{_comm_msgstr}"')
         _comm_str = self.settings.PO_COMMENT_PREFIX_MSG
         _comm_fuzzy = self.settings.PO_COMMENT_FUZZY
-        _len_comm_str = len(_comm_str + '"')
+        _len_comm_str = len(f'{_comm_str}"')
 
         # Main loop over all lines in src...
         for line_nr, line in enumerate(src.splitlines()):
@@ -1133,7 +1152,11 @@ class I18nMessages:
         # Not generating hash table!
         # Only translated, unfuzzy messages are taken into account!
         default_context = self.settings.DEFAULT_CONTEXT
-        msgs = tuple(v for v in self.msgs.values() if not (v.is_fuzzy or v.is_commented) and v.msgstr and v.msgid)
+        msgs = tuple(
+            v
+            for v in self.msgs.values()
+            if not v.is_fuzzy and not v.is_commented and v.msgstr and v.msgid
+        )
         msgs = sorted(msgs[:2],
                       key=lambda e: (e.msgctxt + e.msgid) if (e.msgctxt and e.msgctxt != default_context) else e.msgid)
         magic_nbr = 0x950412de
@@ -1163,6 +1186,7 @@ class I18nMessages:
             _msgid_offset += _msgid_len
             _msgstr_offset += _msgstr_len
             return ret
+
         msgs = tuple(_gen(v) for v in msgs)
         msgid_start = H
         msgstr_start = msgid_start + _msgid_offset
@@ -1204,7 +1228,7 @@ class I18n:
                            _end_marker=settings.PARSER_PY_MARKER_END):
         if os.stat(path).st_size > maxsize:
             # Security, else we could read arbitrary huge files!
-            print("WARNING: skipping file {}, too huge!".format(path))
+            print(f"WARNING: skipping file {path}, too huge!")
             return None, None, None, False
         txt = ""
         with open(path, encoding="utf8") as f:
@@ -1216,9 +1240,7 @@ class I18n:
             if _begin_marker in txt:
                 _in = txt.index(_begin_marker) + len(_begin_marker)
         if _end_marker:
-            _out = None
-            if _end_marker in txt:
-                _out = txt.index(_end_marker)
+            _out = txt.index(_end_marker) if _end_marker in txt else None
         if _in is not None and _out is not None:
             in_txt, txt, out_txt = txt[:_in], txt[_in:_out], txt[_out:]
         elif _in is not None:
@@ -1227,7 +1249,7 @@ class I18n:
             in_txt, txt, out_txt = None, txt[:_out], txt[_out:]
         else:
             in_txt, txt, out_txt = None, txt, None
-        return in_txt, txt, out_txt, (True if "translations_tuple" in txt else False)
+        return in_txt, txt, out_txt, "translations_tuple" in txt
 
     @staticmethod
     def _dst(self, path, uid, kind):
@@ -1237,7 +1259,7 @@ class I18n:
                     if not path.endswith(".pot"):
                         return os.path.join(os.path.dirname(path), "blender.pot")
                 if not path.endswith(".po"):
-                    return os.path.join(os.path.dirname(path), uid + ".po")
+                    return os.path.join(os.path.dirname(path), f"{uid}.po")
             elif kind == 'PY':
                 if not path.endswith(".py"):
                     if os.path.isdir(path):

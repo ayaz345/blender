@@ -8,7 +8,7 @@ def parseNotes(notes, bpm, basefreq, rate = 44100,
 	halfchars = "#b"
 	durationchars = "2345678"
 	sound = None
- 
+
 	while pos < len(notes):
 		char = notes[pos]
 		mod = None
@@ -20,27 +20,24 @@ def parseNotes(notes, bpm, basefreq, rate = 44100,
 			elif notes[pos] in durationchars:
 				dur = notes[pos]
 			pos += 1
- 
+
 		freq = notechars.find(char)
 		if mod == '#':
 			freq += 1
 		elif mod == 'b':
 			freq -= 1
- 
+
 		freq = math.pow(2, freq/12)*basefreq
 		length = float(dur)*60/bpm
- 
+
 		snd = aud.Sound.square(freq, rate)
 		if char == 'p':
 			snd = snd.volume(0)
 		snd = snd.limit(0, length)
 		snd = snd.fadein(0, fadelength)
 		snd = snd.fadeout(length - fadelength, fadelength)
- 
-		if sound:
-			sound = sound.join(snd)
-		else:
-			sound = snd
+
+		sound = sound.join(snd) if sound else snd
 	return sound
  
 def tetris(bpm = 300, freq = 220, rate = 44100):

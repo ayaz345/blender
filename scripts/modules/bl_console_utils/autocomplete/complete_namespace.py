@@ -126,13 +126,12 @@ def complete(word, namespace, *, private=True):
     if not word:
         return []
 
-    re_incomplete_index = RE_INCOMPLETE_INDEX.search(word)
-    if re_incomplete_index:
+    if re_incomplete_index := RE_INCOMPLETE_INDEX.search(word):
         # ignore incomplete index at the end, e.g 'a[1' -> 'a'
         matches = complete_indices(word, namespace,
                                    base=re_incomplete_index.group(1))
 
-    elif not ('[' in word):
+    elif '[' not in word:
         matches = complete_names(word, namespace)
 
     elif word[-1] == ']':
@@ -148,7 +147,7 @@ def complete(word, namespace, *, private=True):
             namespace[TEMP] = eval(obj, namespace)
         except Exception:
             return []
-        matches = complete_names(TEMP + '.' + attr, namespace)
+        matches = complete_names(f'{TEMP}.{attr}', namespace)
         matches = [obj + match[TEMP_N:] for match in matches]
         del namespace[TEMP]
 
@@ -159,7 +158,6 @@ def complete(word, namespace, *, private=True):
     if not matches:
         return []
 
-    # add '.', '('  or '[' if no match has been found
     elif len(matches) == 1 and matches[0] == word:
 
         # try to retrieve the object
@@ -176,13 +174,13 @@ def complete(word, namespace, *, private=True):
             matches = complete_indices(word, namespace, obj=obj)
         elif hasattr(obj, '__call__'):
             # callables
-            matches = [word + '(']
+            matches = [f'{word}(']
         else:
             # any other type
-            matches = [word + '.']
+            matches = [f'{word}.']
 
     # separate public from private
-    public_matches = [match for match in matches if not ('._' in match)]
+    public_matches = [match for match in matches if '._' not in match]
     if private:
         private_matches = [match for match in matches if '._' in match]
         return public_matches + private_matches

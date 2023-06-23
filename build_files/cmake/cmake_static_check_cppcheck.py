@@ -23,12 +23,15 @@ CHECKER_IGNORE_PREFIX = [
     "extern",
 ]
 
-CHECKER_EXCLUDE_SOURCE_FILES = set(os.path.join(*f.split("/")) for f in (
-    # These files hang (taking longer than 5min with v2.8.2 at time of writing).
-    # All other files process in under around 10seconds.
-    "source/blender/editors/space_text/text_format_pov.c",
-    "source/blender/editors/space_text/text_format_pov_ini.c",
-))
+CHECKER_EXCLUDE_SOURCE_FILES = {
+    os.path.join(*f.split("/"))
+    for f in (
+        # These files hang (taking longer than 5min with v2.8.2 at time of writing).
+        # All other files process in under around 10seconds.
+        "source/blender/editors/space_text/text_format_pov.c",
+        "source/blender/editors/space_text/text_format_pov_ini.c",
+    )
+}
 
 CHECKER_ARGS = [
     # Speed up execution.
@@ -84,13 +87,9 @@ def cppcheck() -> None:
     check_commands = []
     for c, inc_dirs, defs in source_info:
         cmd = (
-            [CHECKER_BIN] +
-            CHECKER_ARGS +
-            [c] +
-            [("-I%s" % i) for i in inc_dirs] +
-            [("-D%s" % d) for d in defs] +
-            source_defines
-        )
+            ([CHECKER_BIN] + CHECKER_ARGS + [c] + [f"-I{i}" for i in inc_dirs])
+            + [f"-D{d}" for d in defs]
+        ) + source_defines
 
         check_commands.append((c, cmd))
 
@@ -119,7 +118,7 @@ def cppcheck() -> None:
 
 def main() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        CHECKER_ARGS.append("--cppcheck-build-dir=" + temp_dir)
+        CHECKER_ARGS.append(f"--cppcheck-build-dir={temp_dir}")
         cppcheck()
 
 

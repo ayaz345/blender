@@ -39,11 +39,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         # Fill the render result with a flat color. The framebuffer is
         # defined as a list of pixels, each pixel itself being a list of
         # R,G,B,A values.
-        if self.is_preview:
-            color = [0.1, 0.2, 0.1, 1.0]
-        else:
-            color = [0.2, 0.1, 0.1, 1.0]
-
+        color = [0.1, 0.2, 0.1, 1.0] if self.is_preview else [0.2, 0.1, 0.1, 1.0]
         pixel_count = self.size_x * self.size_y
         rect = [color] * pixel_count
 
@@ -70,9 +66,6 @@ class CustomRenderEngine(bpy.types.RenderEngine):
             self.scene_data = []
             first_time = True
 
-            # Loop over all datablocks used in the scene.
-            for datablock in depsgraph.ids:
-                pass
         else:
             first_time = False
 
@@ -86,8 +79,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
 
         # Loop over all object instances in the scene.
         if first_time or depsgraph.id_type_updated('OBJECT'):
-            for instance in depsgraph.object_instances:
-                pass
+            pass
 
     # For viewport renders, this method is called whenever Blender redraws
     # the 3D viewport. The renderer is expected to quickly draw the render

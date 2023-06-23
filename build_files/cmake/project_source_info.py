@@ -68,10 +68,14 @@ def cmake_cache_var_iter() -> Generator[Tuple[str, str, str], None, None]:
 
 
 def cmake_cache_var(var: str) -> Optional[str]:
-    for var_iter, type_iter, value_iter in cmake_cache_var_iter():
-        if var == var_iter:
-            return value_iter
-    return None
+    return next(
+        (
+            value_iter
+            for var_iter, type_iter, value_iter in cmake_cache_var_iter()
+            if var == var_iter
+        ),
+        None,
+    )
 
 
 def cmake_cache_var_or_exit(var: str) -> str:
@@ -87,7 +91,7 @@ def do_ignore(filepath: str, ignore_prefix_list: Optional[Sequence[str]]) -> boo
         return False
 
     relpath = os.path.relpath(filepath, SOURCE_DIR)
-    return any([relpath.startswith(prefix) for prefix in ignore_prefix_list])
+    return any(relpath.startswith(prefix) for prefix in ignore_prefix_list)
 
 
 def makefile_log() -> List[str]:
@@ -151,7 +155,7 @@ def build_info(
 
         args: Union[str, List[str]] = line.split()
 
-        if not any([(c in args) for c in compilers]):
+        if all(c not in args for c in compilers):
             continue
 
         # join args incase they are not.
@@ -171,13 +175,11 @@ def build_info(
         c_files = [f for f in args if is_c(f)]
         inc_dirs = [f[2:].strip() for f in args if f.startswith('-I')]
         defs = [f[2:].strip() for f in args if f.startswith('-D')]
-        for c in sorted(c_files):
-
-            if do_ignore(c, ignore_prefix_list):
-                continue
-
-            source.append((c, inc_dirs, defs))
-
+        source.extend(
+            (c, inc_dirs, defs)
+            for c in sorted(c_files)
+            if not do_ignore(c, ignore_prefix_list)
+        )
         # make relative includes absolute
         # not totally essential but useful
         for i, f in enumerate(inc_dirs):
@@ -187,7 +189,7 @@ def build_info(
         # safety check that our includes are ok
         for f in inc_dirs:
             if not os.path.exists(f):
-                raise Exception("%s missing" % f)
+                raise Exception(f"{f} missing")
 
     print("done!")
 

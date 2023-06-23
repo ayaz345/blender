@@ -105,9 +105,7 @@ def is_poly_clockwise(stroke):
 def get_object_name(stroke):
     """Returns the name of the object that this stroke is drawn on."""
     fedge = stroke[0].fedge
-    if fedge is None:
-        return None
-    return fedge.viewedge.viewshape.name
+    return None if fedge is None else fedge.viewedge.viewshape.name
 
 
 def material_from_fedge(fe):
@@ -169,14 +167,13 @@ def curvature_from_stroke_vertex(svert):
     c1 = svert.first_svertex.curvatures
     c2 = svert.second_svertex.curvatures
     if c1 is None and c2 is None:
-        Kr = None
+        return None
     elif c1 is None:
-        Kr = c2[4]
+        return c2[4]
     elif c2 is None:
-        Kr = c1[4]
+        return c1[4]
     else:
-        Kr = c1[4] + svert.t2d * (c2[4] - c1[4])
-    return Kr
+        return c1[4] + svert.t2d * (c2[4] - c1[4])
 
 
 # -- General helper functions -- #
@@ -188,7 +185,7 @@ def phase_to_direction(length):
     - the phase
     - a Vector with the values of the cosine and sine of 2pi * phase  (the direction)
     """
-    results = list()
+    results = []
     for i in range(length):
         phase = i / (length - 1)
         results.append((phase, Vector((cos(2 * pi * phase), sin(2 * pi * phase)))))
@@ -421,12 +418,11 @@ def iter_material_value(stroke, func, attribute):
         material = func(it)
         # main
         if attribute == 'LINE':
-            value = rgb_to_bw(*material.line[0:3])
+            value = rgb_to_bw(*material.line[:3])
         elif attribute == 'DIFF':
-            value = rgb_to_bw(*material.diffuse[0:3])
+            value = rgb_to_bw(*material.diffuse[:3])
         elif attribute == 'SPEC':
-            value = rgb_to_bw(*material.specular[0:3])
-        # line separate
+            value = rgb_to_bw(*material.specular[:3])
         elif attribute == 'LINE_R':
             value = material.line[0]
         elif attribute == 'LINE_G':
@@ -435,7 +431,6 @@ def iter_material_value(stroke, func, attribute):
             value = material.line[2]
         elif attribute == 'LINE_A':
             value = material.line[3]
-        # diffuse separate
         elif attribute == 'DIFF_R':
             value = material.diffuse[0]
         elif attribute == 'DIFF_G':
@@ -444,7 +439,6 @@ def iter_material_value(stroke, func, attribute):
             value = material.diffuse[2]
         elif attribute == 'ALPHA':
             value = material.diffuse[3]
-        # specular separate
         elif attribute == 'SPEC_R':
             value = material.specular[0]
         elif attribute == 'SPEC_G':
@@ -454,7 +448,7 @@ def iter_material_value(stroke, func, attribute):
         elif attribute == 'SPEC_HARDNESS':
             value = material.shininess
         else:
-            raise ValueError("unexpected material attribute: " + attribute)
+            raise ValueError(f"unexpected material attribute: {attribute}")
         yield (svert, value)
 
 

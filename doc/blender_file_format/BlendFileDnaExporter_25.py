@@ -89,10 +89,7 @@ class DNACatalogHTML:
             </html>"""
 
         header = self.Catalog.Header
-        bpy = self.bpy
-
-        # ${version} and ${revision}
-        if bpy:
+        if bpy := self.bpy:
             version = '.'.join(map(str, bpy.app.version))
             revision = bpy.app.build_hash
         else:
@@ -100,11 +97,7 @@ class DNACatalogHTML:
             revision = 'Unknown'
 
         # ${bitness}
-        if header.PointerSize == 8:
-            bitness = '64 bit'
-        else:
-            bitness = '32 bit'
-
+        bitness = '64 bit' if header.PointerSize == 8 else '32 bit'
         # ${endianness}
         if header.LittleEndianness:
             endianess = 'Little endianness'
@@ -113,13 +106,11 @@ class DNACatalogHTML:
 
         # ${structs_list}
         log.debug("Creating structs index")
-        structs_list = ''
         list_item = '<li class="multicolumn">({0}) <a href="#{1}">{1}</a></li>\n'
-        structureIndex = 0
-        for structure in self.Catalog.Structs:
-            structs_list += list_item.format(structureIndex, structure.Type.Name)
-            structureIndex += 1
-
+        structs_list = ''.join(
+            list_item.format(structureIndex, structure.Type.Name)
+            for structureIndex, structure in enumerate(self.Catalog.Structs)
+        )
         # ${structs_content}
         log.debug("Creating structs content")
         structs_content = ''
@@ -167,8 +158,7 @@ class DNACatalogHTML:
             size=str(structure.Type.Size)
         )
 
-        struct_table = Template(struct_table_template).substitute(d)
-        return struct_table
+        return Template(struct_table_template).substitute(d)
 
     def StructureFields(self, structure, parentReference, offset):
         fields = ''
@@ -178,27 +168,17 @@ class DNACatalogHTML:
         return fields
 
     def StructureField(self, field, structure, parentReference, offset):
-        structure_field_template = """
-            <tr>
-                <td>${reference}</td>
-                <td>${struct}</td>
-                <td>${type}</td>
-                <td>${name}</td>
-                <td>${offset}</td>
-                <td>${size}</td>
-            </tr>"""
-
         if field.Type.Structure is None or field.Name.IsPointer():
 
             # ${reference}
             reference = field.Name.AsReference(parentReference)
 
             # ${struct}
-            if parentReference is not None:
-                struct = '<a href="#{0}">{0}</a>'.format(structure.Type.Name)
-            else:
-                struct = structure.Type.Name
-
+            struct = (
+                '<a href="#{0}">{0}</a>'.format(structure.Type.Name)
+                if parentReference is not None
+                else structure.Type.Name
+            )
             # ${type}
             type = field.Type.Name
 
@@ -220,13 +200,21 @@ class DNACatalogHTML:
                 size=size
             )
 
-            structure_field = Template(structure_field_template).substitute(d)
+            structure_field_template = """
+            <tr>
+                <td>${reference}</td>
+                <td>${struct}</td>
+                <td>${type}</td>
+                <td>${name}</td>
+                <td>${offset}</td>
+                <td>${size}</td>
+            </tr>"""
 
-        elif field.Type.Structure is not None:
+            return Template(structure_field_template).substitute(d)
+
+        else:
             reference = field.Name.AsReference(parentReference)
-            structure_field = self.StructureFields(field.Type.Structure, reference, offset)
-
-        return structure_field
+            return self.StructureFields(field.Type.Structure, reference, offset)
 
     def indent(self, input, dent, startswith=''):
         output = ''
@@ -391,14 +379,14 @@ def main():
         else:
             filename = 'dna'
         dir = os.path.dirname(__file__)
-        Path_Blend = os.path.join(dir, filename + '.blend')  # temporary blend file
-        Path_HTML = os.path.join(dir, filename + '.html')  # output html file
+        Path_Blend = os.path.join(dir, f'{filename}.blend')
+        Path_HTML = os.path.join(dir, f'{filename}.html')
         Path_CSS = os.path.join(dir, 'dna.css')           # output css file
 
         # create a blend file for dna parsing
         if not os.path.exists(Path_Blend):
             log.info("1: write temp blend file with SDNA info")
-            log.info("   saving to: " + Path_Blend)
+            log.info(f"   saving to: {Path_Blend}")
             try:
                 bpy.ops.wm.save_as_mainfile(filepath=Path_Blend, copy=True, compress=False)
             except:
@@ -406,7 +394,7 @@ def main():
                 return
         else:
             log.info("1: found blend file with SDNA info")
-            log.info("   " + Path_Blend)
+            log.info(f"   {Path_Blend}")
 
         # read blend header from blend file
         log.info("2: read file:")
@@ -435,16 +423,12 @@ def main():
 
         # export dna to xhtml
         log.info("6: export sdna to xhtml file: %r" % Path_HTML)
-        handleHTML = open(Path_HTML, "w")
-        catalog.WriteToHTML(handleHTML)
-        handleHTML.close()
-
+        with open(Path_HTML, "w") as handleHTML:
+            catalog.WriteToHTML(handleHTML)
         # only write the css when doesn't exist or at explicit request
         if not os.path.exists(Path_CSS) or '--dna-overwrite-css' in sys.argv:
-            handleCSS = open(Path_CSS, "w")
-            catalog.WriteToCSS(handleCSS)
-            handleCSS.close()
-
+            with open(Path_CSS, "w") as handleCSS:
+                catalog.WriteToCSS(handleCSS)
         # quit blender
         if not bpy.app.background:
             log.info("7: quit blender")

@@ -46,11 +46,14 @@ def update_script_node(node, report):
 
             if ok:
                 # copy .oso from temporary path to .osl directory
-                dst_path = script_path_noext + ".oso"
+                dst_path = f"{script_path_noext}.oso"
                 try:
                     shutil.copy2(oso_path, dst_path)
                 except:
-                    report({'ERROR'}, "Failed to write .oso file next to external .osl file at " + dst_path)
+                    report(
+                        {'ERROR'},
+                        f"Failed to write .oso file next to external .osl file at {dst_path}",
+                    )
         elif os.path.dirname(node.filepath) == "":
             # module in search path
             oso_path = node.filepath
@@ -85,9 +88,8 @@ def update_script_node(node, report):
         if ok:
             # read bytecode
             try:
-                oso = open(oso_path, 'r')
-                node.bytecode = oso.read()
-                oso.close()
+                with open(oso_path, 'r') as oso:
+                    node.bytecode = oso.read()
             except:
                 import traceback
                 traceback.print_exc()

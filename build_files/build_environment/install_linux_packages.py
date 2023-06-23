@@ -29,11 +29,11 @@ class LoggingColoredFormatter(logging.Formatter):
     def __init__(self, fmt=None):
         super().__init__(fmt=fmt)
         self.FORMATS = {
-            logging.DEBUG: self.GREY + "DEBUG:    " + self.RESET + self._fmt,
-            logging.INFO: self.BLUE + "INFO:     " + self.RESET + self._fmt,
-            logging.WARNING: self.YELLOW + "WARNING: " + self.RESET + self._fmt,
-            logging.ERROR: self.RED + "ERROR:    " + self.RESET + self._fmt,
-            logging.CRITICAL: self.BOLD_RED + "CRITICAL: " + self.RESET + self._fmt,
+            logging.DEBUG: f"{self.GREY}DEBUG:    {self.RESET}{self._fmt}",
+            logging.INFO: f"{self.BLUE}INFO:     {self.RESET}{self._fmt}",
+            logging.WARNING: f"{self.YELLOW}WARNING: {self.RESET}{self._fmt}",
+            logging.ERROR: f"{self.RED}ERROR:    {self.RESET}{self._fmt}",
+            logging.CRITICAL: f"{self.BOLD_RED}CRITICAL: {self.RESET}{self._fmt}",
         }
 
     def format(self, record):
@@ -498,7 +498,8 @@ def suse_pypackages_name_gen(name):
         pp = parent_packages[-1]
         if pp is not None and pp.version_installed is not ...:
             v = "".join(str(i) for i in PackageInstaller.version_tokenize(pp.version_installed)[0][:2])
-            return "python" + v + "-" + name
+            return f"python{v}-{name}"
+
     return _gen
 
 
@@ -940,9 +941,7 @@ class ProgressBar:
             value_str = "*" * int(value) + " " * (value_print_len - int(value))
         else:
             value_str = " " * int(value) + "*" * (value_print_len - int(value))
-        if self.is_known_limit:
-            return f"[{value_str}]"
-        return f">{value_str}<"
+        return f"[{value_str}]" if self.is_known_limit else f">{value_str}<"
 
 
 class PackageInstaller:
@@ -1026,6 +1025,7 @@ class PackageInstaller:
             if version not in versions_set:
                 versions_set.add(version)
                 yield version
+
         MEX_RANGE_DIFF = 5
         VERSION_FACTOR_MAX = 100
         VERSION_FACTOR_MINRANGE_MULTIPLIER = 2
@@ -1064,18 +1064,22 @@ class PackageInstaller:
             if (is_vfac_in_range and is_version_range_big_enough and version_minor % vfac == 0):
                 version_minor_fac = vfac
                 break
-            vfac = vfac // VERSION_FACTOR_STEP_DIVIDER
-        yield from do_yield(str(version_major) + "." + str(version_minor), versions_set)
+            vfac //= VERSION_FACTOR_STEP_DIVIDER
+        yield from do_yield(f"{str(version_major)}.{str(version_minor)}", versions_set)
         yield from do_yield(str(version_major) + str(version_minor), versions_set)
         for i in range(1, MEX_RANGE_DIFF):
             i *= version_minor_fac
             if version_minor + i < version_minor_mex or version_major_mex > version_major:
-                yield from do_yield(str(version_major) + "." + str(version_minor + i), versions_set)
+                yield from do_yield(
+                    f"{str(version_major)}.{str(version_minor + i)}", versions_set
+                )
                 yield from do_yield(str(version_major) + str(version_minor + i), versions_set)
         for i in range(1, MEX_RANGE_DIFF):
             i *= version_minor_fac
             if version_minor - i >= version_minor_min or (version_minor - i >= 0 and version_major_min < version_major):
-                yield from do_yield(str(version_major) + "." + str(version_minor - i), versions_set)
+                yield from do_yield(
+                    f"{str(version_major)}.{str(version_minor - i)}", versions_set
+                )
                 yield from do_yield(str(version_major) + str(version_minor - i), versions_set)
         return
 
@@ -1153,11 +1157,18 @@ class PackageInstaller:
         # Check version in supported range.
         if self.package_query_version_ge_lt(package_distro_name, package.version_min, package.version_mex):
             return package_distro_name
-        # Check version in supported range on special 'versioned' names (like `llvm-11-dev' e.g.).
-        for pn in self.package_name_version_gen(package, package_distro_name, do_range_version_names=True):
-            if self.package_query_version_ge_lt(pn, package.version_min, package.version_mex):
-                return pn
-        return None
+        return next(
+            (
+                pn
+                for pn in self.package_name_version_gen(
+                    package, package_distro_name, do_range_version_names=True
+                )
+                if self.package_query_version_ge_lt(
+                    pn, package.version_min, package.version_mex
+                )
+            ),
+            None,
+        )
 
     def package_distro_name(self, package, parent_packages):
         """
@@ -1394,24 +1405,24 @@ class PackageInstallerDebian(PackageInstaller):
         # Generate versions variants with version between main name and '-dev' suffix, if any.
         tmp_package_name = package_distro_name.removesuffix("-dev")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix="-dev" + suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=f"-dev{suffix}",
+                do_range_version_names=do_range_version_names,
+            )
         # Strip any 'version-like' numbers at the end of the package name (already stripped of '-dev' suffix)
         # and generate versions variants out of it.
         tmp_package_name = tmp_package_name.rstrip("0123456789.-")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix=suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=suffix,
+                do_range_version_names=do_range_version_names,
+            )
         # Generate version variants from given package name.
         versions = [version]
         if do_range_version_names:
@@ -1420,7 +1431,7 @@ class PackageInstallerDebian(PackageInstaller):
             versions += [*self.versions_range_gen(package, set(versions))]
         for v in versions:
             yield package_distro_name + v + suffix
-            yield package_distro_name + "-" + v + suffix
+            yield f"{package_distro_name}-{v}{suffix}"
 
 
 class PackageInstallerFedora(PackageInstaller):
@@ -1460,24 +1471,24 @@ class PackageInstallerFedora(PackageInstaller):
         # Generate versions variants with version between main name and '-devel' suffix, if any.
         tmp_package_name = package_distro_name.removesuffix("-devel")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix="-devel" + suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=f"-devel{suffix}",
+                do_range_version_names=do_range_version_names,
+            )
         # Strip any 'version-like' numbers at the end of the package name (already stripped of '-devel' suffix)
         # and generate versions variants out of it.
         tmp_package_name = tmp_package_name.rstrip("0123456789.-")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix=suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=suffix,
+                do_range_version_names=do_range_version_names,
+            )
         # Generate version variants from given package name.
         versions = [version]
         if do_range_version_names:
@@ -1486,7 +1497,7 @@ class PackageInstallerFedora(PackageInstaller):
             versions += [*self.versions_range_gen(package, set(versions))]
         for v in versions:
             yield package_distro_name + v + suffix
-            yield package_distro_name + "-" + v + suffix
+            yield f"{package_distro_name}-{v}{suffix}"
 
 
 class PackageInstallerSuse(PackageInstaller):
@@ -1529,24 +1540,24 @@ class PackageInstallerSuse(PackageInstaller):
         # Generate versions variants with version between main name and '-devel' suffix, if any.
         tmp_package_name = package_distro_name.removesuffix("-devel")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix="-devel" + suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=f"-devel{suffix}",
+                do_range_version_names=do_range_version_names,
+            )
         # Strip any 'version-like' numbers at the end of the package name (already stripped of '-devel' suffix)
         # and generate versions variants out of it.
         tmp_package_name = tmp_package_name.rstrip("0123456789.-")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix=suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=suffix,
+                do_range_version_names=do_range_version_names,
+            )
         # Generate version variants from given package name.
         versions = [version]
         if do_range_version_names:
@@ -1555,7 +1566,7 @@ class PackageInstallerSuse(PackageInstaller):
             versions += [*self.versions_range_gen(package, set(versions))]
         for v in versions:
             yield package_distro_name + v + suffix
-            yield package_distro_name + "-" + v + suffix
+            yield f"{package_distro_name}-{v}{suffix}"
 
 
 class PackageInstallerArch(PackageInstaller):
@@ -1598,13 +1609,13 @@ class PackageInstallerArch(PackageInstaller):
         # and generate versions variants out of it.
         tmp_package_name = tmp_package_name.rstrip("0123456789.-")
         if tmp_package_name != package_distro_name:
-            for pn in self.package_name_version_gen(
-                    package,
-                    tmp_package_name,
-                    version,
-                    suffix=suffix,
-                    do_range_version_names=do_range_version_names):
-                yield pn
+            yield from self.package_name_version_gen(
+                package,
+                tmp_package_name,
+                version,
+                suffix=suffix,
+                do_range_version_names=do_range_version_names,
+            )
         # Generate version variants from given package name.
         versions = [version]
         if do_range_version_names:
@@ -1613,7 +1624,7 @@ class PackageInstallerArch(PackageInstaller):
             versions += [*self.versions_range_gen(package, set(versions))]
         for v in versions:
             yield package_distro_name + v + suffix
-            yield package_distro_name + "-" + v + suffix
+            yield f"{package_distro_name}-{v}{suffix}"
 
 
 DISTRO_IDS_INSTALLERS = {
@@ -1698,7 +1709,7 @@ def argparse_create():
         "--distro-id",
         dest="distro_id",
         default=...,
-        choices=set(DISTRO_IDS_INSTALLERS.keys()) - set((...,)),
+        choices=set(DISTRO_IDS_INSTALLERS.keys()) - {...},
         help="Force the linux distribution identifier to a specific value instead of relying on automatic detection.",
     )
     parser.add_argument(

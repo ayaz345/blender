@@ -28,10 +28,7 @@ import bpy
 
 # Append the specified property name on the the existing path
 def path_add_property(path, prop):
-    if path:
-        return path + "." + prop
-    else:
-        return prop
+    return f"{path}.{prop}" if path else prop
 
 ###########################
 # Poll Callbacks
@@ -39,8 +36,7 @@ def path_add_property(path, prop):
 
 # selected objects (active object must be in object mode)
 def RKS_POLL_selected_objects(_ksi, context):
-    ob = context.active_object
-    if ob:
+    if ob := context.active_object:
         return ob.mode == 'OBJECT'
     else:
         return bool(context.selected_objects)
@@ -107,18 +103,11 @@ def RKS_GEN_available(_ksi, _context, ks, data):
     # if we haven't got an ID-block as 'data', try to restrict
     # paths added to only those which branch off from here
     # i.e. for bones
-    if id_block != data:
-        basePath = data.path_from_id()
-    else:
-        basePath = None  # this is not needed...
-
+    basePath = data.path_from_id() if id_block != data else None
     # for each F-Curve, include a path to key it
     # NOTE: we don't need to set the group settings here
     for fcu in adt.action.fcurves:
-        if basePath:
-            if basePath in fcu.data_path:
-                ks.paths.add(id_block, fcu.data_path, index=fcu.array_index)
-        else:
+        if basePath and basePath in fcu.data_path or not basePath:
             ks.paths.add(id_block, fcu.data_path, index=fcu.array_index)
 
 # ------
@@ -219,7 +208,7 @@ def RKS_GEN_custom_props(_ksi, _context, ks, data):
         if cprop_name == "_RNA_UI":
             continue
 
-        prop_path = '["%s"]' % bpy.utils.escape_identifier(cprop_name)
+        prop_path = f'["{bpy.utils.escape_identifier(cprop_name)}"]'
 
         try:
             rna_property = data.path_resolve(prop_path, False)
@@ -233,7 +222,7 @@ def RKS_GEN_custom_props(_ksi, _context, ks, data):
         if rna_property.rna_type not in prop_type_compat:
             continue
 
-        path = "%s%s" % (base_path, prop_path)
+        path = f"{base_path}{prop_path}"
         if grouping:
             ks.paths.add(id_block, path, group_method='NAMED', group_name=grouping)
         else:

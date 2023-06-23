@@ -25,14 +25,13 @@ def ReadString(handle, length):
     '''
     if length != 0:
         return handle.read(length).decode()
-    else:
-        # length == 0 means we want a zero terminating string
-        result = ""
+    # length == 0 means we want a zero terminating string
+    result = ""
+    s = ReadString(handle, 1)
+    while s != "\0":
+        result += s
         s = ReadString(handle, 1)
-        while s != "\0":
-            result += s
-            s = ReadString(handle, 1)
-        return result
+    return result
 
 
 def Read(type, handle, fileheader):
@@ -70,23 +69,20 @@ def openBlendFile(filename):
     magic = ReadString(handle, 7)
     if magic in {"BLENDER", "BULLETf"}:
         log.debug("normal blendfile detected")
-        handle.seek(0, os.SEEK_SET)
-        return handle
     else:
         log.debug("gzip blendfile detected?")
         handle.close()
         log.debug("decompressing started")
         fs = gzip.open(filename, "rb")
         handle = tempfile.TemporaryFile()
-        data = fs.read(1024 * 1024)
-        while data:
+        while data := fs.read(1024 * 1024):
             handle.write(data)
-            data = fs.read(1024 * 1024)
         log.debug("decompressing finished")
         fs.close()
         log.debug("resetting decompressed file")
-        handle.seek(0, os.SEEK_SET)
-        return handle
+
+    handle.seek(0, os.SEEK_SET)
+    return handle
 
 
 def Align(handle):
@@ -166,18 +162,18 @@ class BlendFileHeader:
         log.debug(pointersize)
         if pointersize == "-":
             self.PointerSize = 8
-        if pointersize == "_":
+        elif pointersize == "_":
             self.PointerSize = 4
 
         endianness = ReadString(handle, 1)
         log.debug(endianness)
-        if endianness == "v":
-            self.LittleEndianness = True
-            self.StructPre = "<"
         if endianness == "V":
             self.LittleEndianness = False
             self.StructPre = ">"
 
+        elif endianness == "v":
+            self.LittleEndianness = True
+            self.StructPre = "<"
         version = ReadString(handle, 3)
         log.debug(version)
         self.Version = int(version)
@@ -199,7 +195,7 @@ class BlendFileBlock:
         log.debug("find dna structure")
         dnaIndex = self.Header.SDNAIndex
         dnaStruct = self.File.Catalog.Structs[dnaIndex]
-        log.debug("found " + dnaStruct.Type.Name)
+        log.debug(f"found {dnaStruct.Type.Name}")
         handle.seek(self.Header.FileOffset, os.SEEK_SET)
         return dnaStruct.GetField(self.File.Header, handle, path)
 
@@ -224,13 +220,12 @@ class FileBlockHeader:
             self.OldAddress = Read('pointer', handle, fileheader)
             self.SDNAIndex = Read('uint', handle, fileheader)
             self.Count = Read('uint', handle, fileheader)
-            self.FileOffset = handle.tell()
         else:
             self.Size = Read('uint', handle, fileheader)
             self.OldAddress = 0
             self.SDNAIndex = 0
             self.Count = 0
-            self.FileOffset = handle.tell()
+        self.FileOffset = handle.tell()
         # self.Code += ' ' * (4 - len(self.Code))
         log.debug("found blend-file-block-fileheader {0} {1}".format(self.Code, self.FileOffset))
 
@@ -261,7 +256,7 @@ class DNACatalog:
         NAME = ReadString(handle, 4)
         numberOfNames = Read('uint', handle, fileheader)
         log.debug("building #{0} names".format(numberOfNames))
-        for i in range(numberOfNames):
+        for _ in range(numberOfNames):
             name = ReadString(handle, 0)
             self.Names.append(DNAName(name))
         Align(handle)
@@ -270,7 +265,7 @@ class DNACatalog:
         TYPE = ReadString(handle, 4)
         numberOfTypes = Read('uint', handle, fileheader)
         log.debug("building #{0} types".format(numberOfTypes))
-        for i in range(numberOfTypes):
+        for _ in range(numberOfTypes):
             type = ReadString(handle, 0)
             self.Types.append(DNAType(type))
         Align(handle)
@@ -287,14 +282,14 @@ class DNACatalog:
         STRC = ReadString(handle, 4)
         numberOfStructures = Read('uint', handle, fileheader)
         log.debug("building #{0} structures".format(numberOfStructures))
-        for structureIndex in range(numberOfStructures):
+        for _ in range(numberOfStructures):
             type = Read('ushort', handle, fileheader)
             Type = self.Types[type]
             structure = DNAStructure(Type)
             self.Structs.append(structure)
 
             numberOfFields = Read('ushort', handle, fileheader)
-            for fieldIndex in range(numberOfFields):
+            for _ in range(numberOfFields):
                 fTypeIndex = Read('ushort', handle, fileheader)
                 fNameIndex = Read('ushort', handle, fileheader)
                 fType = self.Types[fTypeIndex]
@@ -313,11 +308,7 @@ class DNAName:
         self.Name = name
 
     def AsReference(self, parent):
-        if parent is None:
-            result = ""
-        else:
-            result = parent + "."
-
+        result = "" if parent is None else f"{parent}."
         result = result + self.ShortName()
         return result
 
@@ -328,7 +319,7 @@ class DNAName:
         result = result.replace(")", "")
         Index = result.find("[")
         if Index != -1:
-            result = result[0:Index]
+            result = result[:Index]
         return result
 
     def IsPointer(self):
@@ -385,13 +376,13 @@ class DNAStructure:
         offset = 0
         for field in self.Fields:
             if field.Name.ShortName() == name:
-                log.debug("found " + name + "@" + str(offset))
+                log.debug(f"found {name}@{str(offset)}")
                 handle.seek(offset, os.SEEK_CUR)
                 return field.DecodeField(header, handle, rest)
             else:
                 offset += field.Size(header)
 
-        log.debug("error did not find " + path)
+        log.debug(f"error did not find {path}")
         return None
 
 
@@ -414,16 +405,15 @@ class DNAField:
             return self.Type.Size * self.Name.ArraySize()
 
     def DecodeField(self, header, handle, path):
-        if path == "":
-            if self.Name.IsPointer():
-                return Read('pointer', handle, header)
-            if self.Type.Name == "int":
-                return Read('int', handle, header)
-            if self.Type.Name == "short":
-                return Read('short', handle, header)
-            if self.Type.Name == "float":
-                return Read('float', handle, header)
-            if self.Type.Name == "char":
-                return ReadString(handle, self.Name.ArraySize())
-        else:
+        if path != "":
             return self.Type.Structure.GetField(header, handle, path)
+        if self.Name.IsPointer():
+            return Read('pointer', handle, header)
+        if self.Type.Name == "int":
+            return Read('int', handle, header)
+        if self.Type.Name == "short":
+            return Read('short', handle, header)
+        if self.Type.Name == "float":
+            return Read('float', handle, header)
+        if self.Type.Name == "char":
+            return ReadString(handle, self.Name.ArraySize())

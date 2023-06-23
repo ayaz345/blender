@@ -30,7 +30,7 @@ def main() -> None:
     blender_srcdir = Path(__file__).absolute().parent.parent.parent
 
     cli_parser = argparse.ArgumentParser(
-        description=f"Create a tarball of the Blender sources, optionally including sources of dependencies.",
+        description="Create a tarball of the Blender sources, optionally including sources of dependencies.",
         epilog="This script is intended to be run by `make source_archive_complete`.",
     )
     cli_parser.add_argument(
@@ -65,10 +65,7 @@ def main() -> None:
 
 
 def tarball_path(output_dir: Path, version: make_utils.BlenderVersion, cli_args: Any) -> Path:
-    extra = ""
-    if cli_args.include_packages:
-        extra = "-with-libraries"
-
+    extra = "-with-libraries" if cli_args.include_packages else ""
     return output_dir / f"blender{extra}-{version}.tar.xz"
 
 
@@ -200,7 +197,7 @@ def create_tarball(
 
 
 def create_checksum_file(tarball: Path) -> None:
-    md5_path = tarball.with_name(tarball.name + ".md5sum")
+    md5_path = tarball.with_name(f"{tarball.name}.md5sum")
     print(f'Creating checksum:           "{md5_path}" ...', end="", flush=True)
     command = [
         "md5sum",

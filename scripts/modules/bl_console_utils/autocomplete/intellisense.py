@@ -57,8 +57,7 @@ def complete(line, cursor, namespace, private):
     >>> complete('re.sr', 5, {'re': re})
     (['re.sre_compile', 're.sre_parse'], 're.sr')
     """
-    re_unquoted_word = RE_UNQUOTED_WORD.search(line[:cursor])
-    if re_unquoted_word:
+    if re_unquoted_word := RE_UNQUOTED_WORD.search(line[:cursor]):
         # unquoted word -> module or attribute completion
         word = re_unquoted_word.group(1)
         if RE_MODULE.match(line):

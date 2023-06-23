@@ -35,14 +35,14 @@ class DataPathBuilder:
         self.data_path = attrs
 
     def __getattr__(self, attr):
-        str_value = ".%s" % attr
+        str_value = f".{attr}"
         return DataPathBuilder(self.data_path + (str_value, ))
 
     def __getitem__(self, key):
         if type(key) is int:
             str_value = '[%d]' % key
         elif type(key) is str:
-            str_value = '["%s"]' % bpy.utils.escape_identifier(key)
+            str_value = f'["{bpy.utils.escape_identifier(key)}"]'
         else:
             raise Exception("unsupported accessor %r of type %r (internal error)" % (key, type(key)))
         return DataPathBuilder(self.data_path + (str_value, ))
@@ -69,23 +69,22 @@ class DataPathBuilder:
                             # Type check!
                             type_ok = True
                             if class_name is not None:
-                                type_ok = False
-                                for base_type in classes_recursive(type(base)):
-                                    if base_type.__name__ == class_name:
-                                        type_ok = True
-                                        break
+                                type_ok = any(
+                                    base_type.__name__ == class_name
+                                    for base_type in classes_recursive(type(base))
+                                )
                             if type_ok:
                                 try:
                                     # print("base." + item_new)
-                                    base_new = eval("base." + item_new)
+                                    base_new = eval(f"base.{item_new}")
                                     break  # found, don't keep looking
                                 except:
                                     pass
-                    item_new = "." + item_new
+                    item_new = f".{item_new}"
                 else:
                     item_new = item
                     try:
-                        base_new = eval("base" + item_new)
+                        base_new = eval(f"base{item_new}")
                     except:
                         pass
 
@@ -111,12 +110,9 @@ def id_iter():
 
 
 def anim_data_actions(anim_data):
-    actions = []
-    actions.append(anim_data.action)
+    actions = [anim_data.action]
     for track in anim_data.nla_tracks:
-        for strip in track.strips:
-            actions.append(strip.action)
-
+        actions.extend(strip.action for strip in track.strips)
     # filter out None
     return [act for act in actions if act]
 
@@ -128,7 +124,7 @@ def find_path_new(id_data, data_path, rna_update_from_map, fcurve, log):
         return data_path
 
     # recursive path fixing, likely will be one in most cases.
-    data_path_builder = eval("DataPathBuilder(tuple())." + data_path)
+    data_path_builder = eval(f"DataPathBuilder(tuple()).{data_path}")
     data_resolve = data_path_builder.resolve(id_data, rna_update_from_map, fcurve, log)
 
     path_new = [pair[0] for pair in data_resolve]
@@ -153,8 +149,7 @@ def update_data_paths(rna_update, log=sys.stdout):
     for id_data in id_iter():
         # check node-trees too
         anim_data_ls = [(id_data, getattr(id_data, "animation_data", None))]
-        node_tree = getattr(id_data, "node_tree", None)
-        if node_tree:
+        if node_tree := getattr(id_data, "node_tree", None):
             anim_data_ls.append((node_tree, node_tree.animation_data))
 
         for anim_data_base, anim_data in anim_data_ls:
@@ -169,7 +164,10 @@ def update_data_paths(rna_update, log=sys.stdout):
                     if not IS_TESTING:
                         fcurve.data_path = data_path_new
                         fcurve.driver.is_valid = True  # reset to allow this to work again
-                    print("driver-fcurve (%s): %s -> %s" % (id_data.name, data_path, data_path_new), file=log)
+                    print(
+                        f"driver-fcurve ({id_data.name}): {data_path} -> {data_path_new}",
+                        file=log,
+                    )
 
                 for var in fcurve.driver.variables:
                     if var.type == 'SINGLE_PROP':
@@ -183,8 +181,10 @@ def update_data_paths(rna_update, log=sys.stdout):
                                 if data_path_new != data_path:
                                     if not IS_TESTING:
                                         tar.data_path = data_path_new
-                                    print("driver (%s): %s -> %s" % (id_data_other.name, data_path, data_path_new),
-                                          file=log)
+                                    print(
+                                        f"driver ({id_data_other.name}): {data_path} -> {data_path_new}",
+                                        file=log,
+                                    )
 
             for action in anim_data_actions(anim_data):
                 for fcu in action.fcurves:
@@ -194,7 +194,7 @@ def update_data_paths(rna_update, log=sys.stdout):
                     if data_path_new != data_path:
                         if not IS_TESTING:
                             fcu.data_path = data_path_new
-                        print("fcurve (%s): %s -> %s" % (id_data.name, data_path, data_path_new), file=log)
+                        print(f"fcurve ({id_data.name}): {data_path} -> {data_path_new}", file=log)
 
 
 if __name__ == "__main__":

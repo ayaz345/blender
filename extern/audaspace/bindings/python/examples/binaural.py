@@ -9,5 +9,5 @@ handle = device.play(sound)
 
 while handle.status:
     source.azimuth += 1
-    print("Azimuth: " + str(source.azimuth))
+    print(f"Azimuth: {source.azimuth}")
     time.sleep(0.1)

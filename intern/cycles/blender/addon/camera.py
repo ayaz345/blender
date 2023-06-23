@@ -20,8 +20,7 @@ def create_grid(sensor_height, sensor_width):
     uu, vv = np.meshgrid(np.linspace(0, 1, 100), np.linspace(0, 1, 100))
     uu = (uu - 0.5) * sensor_width
     vv = (vv - 0.5) * sensor_height
-    rr = np.sqrt(uu ** 2 + vv ** 2)
-    return rr
+    return np.sqrt(uu ** 2 + vv ** 2)
 
 
 def fisheye_lens_polynomial_from_projective(focal_length=50, sensor_width=36, sensor_height=None):

@@ -40,11 +40,11 @@ class RawBlendFileReader:
         blendfile_base = None
         head = blendfile.read(4)
         blendfile.seek(0)
-        if head[0:2] == b'\x1f\x8b':  # GZIP magic.
+        if head[:2] == b'\x1f\x8b':  # GZIP magic.
             import gzip
             blendfile_base = blendfile
             blendfile = gzip.open(blendfile, "rb")
-        elif head[0:4] == b'\x28\xb5\x2f\xfd':  # Z-standard magic.
+        elif head[:4] == b'\x28\xb5\x2f\xfd':  # Z-standard magic.
             import zstandard
             blendfile_base = blendfile
             blendfile = zstandard.open(blendfile, "rb")

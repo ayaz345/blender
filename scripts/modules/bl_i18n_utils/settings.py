@@ -307,7 +307,7 @@ WARN_MSGID_NOT_CAPITALIZED = True
 
 # Strings that should not raise above warning!
 WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
-    "",                              # Simplifies things... :p
+    "",
     "ac3",
     "along X",
     "along Y",
@@ -320,21 +320,19 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "arcsin(A)",
     "arctan(A)",
     "ascii",
-    "author",                        # Addons' field. :/
+    "author",
     "bItasc",
     "blender.org",
     "color_index is invalid",
     "cos(A)",
     "cosh(A)",
-    "dbl-",                          # Compacted for 'double', for keymap items.
-    "description",                   # Addons' field. :/
+    "dbl-",
+    "description",
     "dx",
     "fBM",
     "flac",
     "fps: %.2f",
     "fps: %i",
-    "gimbal",
-    "global",
     "glTF 2.0 (.glb/.gltf)",
     "glTF Binary (.glb)",
     "glTF Embedded (.gltf)",
@@ -347,8 +345,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "iTaSC",
     "iTaSC parameters",
     "kb",
-    "local",
-    "location",                      # Addons' field. :/
+    "location",
     "locking %s X",
     "locking %s Y",
     "locking %s Z",
@@ -356,7 +353,6 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "mm",
     "mp2",
     "mp3",
-    "normal",
     "ogg",
     "oneAPI",
     "p0",
@@ -377,12 +373,10 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "uv_on_emitter() requires a modifier from an evaluated object",
     "var",
     "vBVH",
-    "view",
     "wav",
     "wmOwnerID '%s' not in workspace '%s'",
     "y",
     "y = (Ax + B)",
-    # Sub-strings.
     "all",
     "all and invert unselected",
     "and AMD driver version %s or newer",
@@ -421,7 +415,8 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "jumps over",
     "left",
     "local",
-    "matrices", "no matrices",
+    "matrices",
+    "no matrices",
     "multi-res modifier",
     "name",
     "non-triangle face",
@@ -429,7 +424,8 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "on {:%Y-%m-%d}",
     "or AMD with macOS %s or newer",
     "performance impact!",
-    "positions", "no positions",
+    "positions",
+    "no positions",
     "read",
     "remove",
     "right",
@@ -460,7 +456,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "within seconds",
     "write",
 }
-WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= set(lng[2] for lng in LANGUAGES)
+WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= {lng[2] for lng in LANGUAGES}
 
 WARN_MSGID_END_POINT_ALLOWED = {
     "Circle|Alt .",
@@ -501,8 +497,8 @@ PYTHON3_EXEC = "python3"
 BLENDER_EXEC = os.path.abspath(os.path.join("foo", "bar", "blender"))
 # check for blender.bin
 if not os.path.exists(BLENDER_EXEC):
-    if os.path.exists(BLENDER_EXEC + ".bin"):
-        BLENDER_EXEC = BLENDER_EXEC + ".bin"
+    if os.path.exists(f"{BLENDER_EXEC}.bin"):
+        BLENDER_EXEC = f"{BLENDER_EXEC}.bin"
 
 # The gettext msgfmt "compiler". You’ll likely have to edit it in your user_settings.py if you’re under Windows.
 GETTEXT_MSGFMT_EXECUTABLE = "msgfmt"
@@ -556,7 +552,7 @@ REL_TEMPLATES_DIR = os.path.join("scripts", "startup", "bl_app_templates_system"
 ASSET_CATALOG_FILE = "blender_assets.cats.txt"
 
 # The template messages file (relative to I18N_DIR).
-REL_FILE_NAME_POT = os.path.join(REL_BRANCHES_DIR, DOMAIN + ".pot")
+REL_FILE_NAME_POT = os.path.join(REL_BRANCHES_DIR, f"{DOMAIN}.pot")
 
 # Mo root datapath.
 REL_MO_PATH_ROOT = os.path.join(REL_TRUNK_DIR, "locale")
@@ -569,7 +565,7 @@ MO_PATH_ROOT_RELATIVE = os.path.join("locale")
 MO_PATH_TEMPLATE_RELATIVE = os.path.join(MO_PATH_ROOT_RELATIVE, "{}", "LC_MESSAGES")
 
 # Mo file name.
-MO_FILE_NAME = DOMAIN + ".mo"
+MO_FILE_NAME = f"{DOMAIN}.mo"
 
 # Where to search for py files that may contain ui strings (relative to one of the 'resource_path' of Blender).
 CUSTOM_PY_UI_FILES = [
@@ -685,8 +681,7 @@ class I18nSettings:
         return json.dumps(export_dict)
 
     def load(self, fname, reset=False):
-        reset = reset or fname is None
-        if reset:
+        if reset := reset or fname is None:
             self.__dict__ = {uid: data for uid, data in globals().items() if not uid.startswith("_")}
         if fname is None:
             return

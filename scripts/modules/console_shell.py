@@ -15,11 +15,7 @@ def shell_run(text):
     import subprocess
     val, output = subprocess.getstatusoutput(text)
 
-    if not val:
-        style = 'OUTPUT'
-    else:
-        style = 'ERROR'
-
+    style = 'OUTPUT' if not val else 'ERROR'
     add_scrollback(output, style)
 
 

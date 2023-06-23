@@ -112,7 +112,7 @@ def get_argspec(func, *, strip_self=True, doc=None, source=None):
         if source:
             match = re.search(DEF_SOURCE % func_name, source, RE_FLAG)
     if match:
-        argspec = reduce_spaces(match.group(1))
+        argspec = reduce_spaces(match[1])
     else:
         # try with the inspect.getarg* functions
         try:
@@ -149,9 +149,7 @@ def complete(line, cursor, namespace):
     matches = []
     word = ''
     scrollback = ''
-    match = RE_DEF_COMPLETE.search(line[:cursor])
-
-    if match:
+    if match := RE_DEF_COMPLETE.search(line[:cursor]):
         word = match.group(1)
         func_word = match.group(2)
         try:

@@ -105,25 +105,21 @@ class ExportCyclesXML(bpy.types.Operator, ExportHelper):
         nverts = ""
         verts = ""
         uvs = ""
-        P = ""
-
-        for v in mesh.vertices:
-            P += "%f %f %f  " % (v.co[0], v.co[1], v.co[2])
-
+        P = "".join("%f %f %f  " % (v.co[0], v.co[1], v.co[2]) for v in mesh.vertices)
         verts_and_uvs = zip(mesh.tessfaces, mesh.tessface_uv_textures.active.data)
 
         for f, uvf in verts_and_uvs:
             vcount = len(f.vertices)
-            nverts += str(vcount) + " "
+            nverts += f"{vcount} "
 
             for v in f.vertices:
-                verts += str(v) + " "
+                verts += f"{str(v)} "
 
-            uvs += str(uvf.uv1[0]) + " " + str(uvf.uv1[1]) + " "
-            uvs += str(uvf.uv2[0]) + " " + str(uvf.uv2[1]) + " "
-            uvs += str(uvf.uv3[0]) + " " + str(uvf.uv3[1]) + " "
+            uvs += f"{str(uvf.uv1[0])} {str(uvf.uv1[1])} "
+            uvs += f"{str(uvf.uv2[0])} {str(uvf.uv2[1])} "
+            uvs += f"{str(uvf.uv3[0])} {str(uvf.uv3[1])} "
             if vcount == 4:
-                uvs += " " + str(uvf.uv4[0]) + " " + str(uvf.uv4[1]) + " "
+                uvs += f" {str(uvf.uv4[0])} {str(uvf.uv4[1])} "
 
         node = etree.Element(
             'mesh',

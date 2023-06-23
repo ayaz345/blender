@@ -35,7 +35,7 @@ subprocess.run(['install_name_tool', '-add_rpath', rpath, file])
 # Strip version from dependencies.
 p = subprocess.run(['otool', '-L', file], capture_output=True)
 tokens = p.stdout.split()
-for i, token in enumerate(tokens):
+for token in tokens:
     token = token.decode("utf-8")
     if token.startswith("@rpath"):
         new_token = strip_lib_version(token)
@@ -43,6 +43,6 @@ for i, token in enumerate(tokens):
 
 # Strip version from library itself.
 new_file = strip_lib_version(file)
-new_id = '@rpath/' + os.path.basename(new_file)
+new_id = f'@rpath/{os.path.basename(new_file)}'
 os.rename(file, new_file)
 subprocess.run(['install_name_tool', '-id', new_id, new_file])

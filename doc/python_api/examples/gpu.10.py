@@ -8,6 +8,7 @@ for all points that will be visible on the screen.
 In the fragment shader the ``sin`` of the arc length is calculated.
 Based on the result a decision is made on whether the fragment should be drawn or not.
 """
+
 import bpy
 import gpu
 from random import random
@@ -48,9 +49,9 @@ del shader_info
 coords = [Vector((random(), random(), random())) * 5 for _ in range(5)]
 
 arc_lengths = [0]
-for a, b in zip(coords[:-1], coords[1:]):
-    arc_lengths.append(arc_lengths[-1] + (a - b).length)
-
+arc_lengths.extend(
+    arc_lengths[-1] + (a - b).length for a, b in zip(coords[:-1], coords[1:])
+)
 batch = batch_for_shader(
     shader, 'LINE_STRIP',
     {"position": coords, "arcLength": arc_lengths},

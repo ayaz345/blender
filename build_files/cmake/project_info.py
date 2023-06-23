@@ -128,7 +128,7 @@ def is_c_any(filename: str) -> bool:
 
 def is_svn_file(filename: str) -> bool:
     dn, fn = os.path.split(filename)
-    filename_svn = join(dn, ".svn", "text-base", "%s.svn-base" % fn)
+    filename_svn = join(dn, ".svn", "text-base", f"{fn}.svn-base")
     return exists(filename_svn)
 
 
@@ -151,13 +151,12 @@ def cmake_advanced_info() -> Union[Tuple[List[str], List[Tuple[str, str]]], Tupl
         print("CMAKE_DIR %r" % CMAKE_DIR)
         if sys.platform == "win32":
             raise Exception("Error: win32 is not supported")
+        if make_exe_basename.startswith(("make", "gmake")):
+            cmd = ("cmake", CMAKE_DIR, "-GEclipse CDT4 - Unix Makefiles")
+        elif make_exe_basename.startswith("ninja"):
+            cmd = ("cmake", CMAKE_DIR, "-GEclipse CDT4 - Ninja")
         else:
-            if make_exe_basename.startswith(("make", "gmake")):
-                cmd = ("cmake", CMAKE_DIR, "-GEclipse CDT4 - Unix Makefiles")
-            elif make_exe_basename.startswith("ninja"):
-                cmd = ("cmake", CMAKE_DIR, "-GEclipse CDT4 - Ninja")
-            else:
-                raise Exception("Unknown make program %r" % make_exe)
+            raise Exception("Unknown make program %r" % make_exe)
 
         subprocess.check_call(cmd)
         return join(CMAKE_DIR, ".cproject")
@@ -211,9 +210,6 @@ def cmake_advanced_info() -> Union[Tuple[List[str], List[Tuple[str, str]]], Tupl
                         elif kind == "inc":
                             # <pathentry include="/data/src/blender/blender/source/blender/editors/include" kind="inc" path="" system="true"/>
                             includes.append(path.attributes["include"].value)
-                        else:
-                            pass
-
     return includes, defines
 
 
@@ -225,10 +221,9 @@ def cmake_cache_var(var: str) -> Optional[str]:
             if not l_strip.startswith(("//", "#"))
         ]
 
-    for l in lines:
-        if l.split(":")[0] == var:
-            return l.split("=", 1)[-1]
-    return None
+    return next(
+        (l.split("=", 1)[-1] for l in lines if l.split(":")[0] == var), None
+    )
 
 
 def cmake_compiler_defines() -> Optional[List[str]]:
@@ -242,12 +237,10 @@ def cmake_compiler_defines() -> Optional[List[str]]:
     temp_c = tempfile.mkstemp(suffix=".c")[1]
     temp_def = tempfile.mkstemp(suffix=".def")[1]
 
-    os.system("%s -dM -E %s > %s" % (compiler, temp_c, temp_def))
+    os.system(f"{compiler} -dM -E {temp_c} > {temp_def}")
 
-    temp_def_file = open(temp_def)
-    lines = [l.strip() for l in temp_def_file if l.strip()]
-    temp_def_file.close()
-
+    with open(temp_def) as temp_def_file:
+        lines = [l.strip() for l in temp_def_file if l.strip()]
     os.remove(temp_c)
     os.remove(temp_def)
     return lines

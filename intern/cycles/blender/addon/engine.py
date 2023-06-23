@@ -250,7 +250,7 @@ def list_render_passes(scene, srl):
 
     # Light groups.
     for lightgroup in srl.lightgroups:
-        yield ("Combined_%s" % lightgroup.name, "RGB", 'COLOR')
+        yield (f"Combined_{lightgroup.name}", "RGB", 'COLOR')
 
     # Path guiding debug passes.
     if _cycles.with_debug:

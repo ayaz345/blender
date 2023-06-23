@@ -59,13 +59,13 @@ def get_console(console_id):
 
     console_data = consoles.get(console_id)
 
+    # XXX, bug in python 3.1.2, 3.2 ? (worked in 3.1.1)
+    # seems there is no way to clear StringIO objects for writing, have to
+    # make new ones each time.
+    import io
     if console_data:
         console, stdout, stderr = console_data
 
-        # XXX, bug in python 3.1.2, 3.2 ? (worked in 3.1.1)
-        # seems there is no way to clear StringIO objects for writing, have to
-        # make new ones each time.
-        import io
         stdout = io.StringIO()
         stderr = io.StringIO()
     else:
@@ -94,7 +94,6 @@ def get_console(console_id):
         if _BPY_MAIN_OWN:
             console._bpy_main_mod = bpy_main_mod
 
-        import io
         stdout = io.StringIO()
         stderr = io.StringIO()
 
@@ -297,16 +296,16 @@ def copy_as_script(context):
 
         if type == 'INFO':  # ignore autocomp.
             continue
-        if type == 'INPUT':
+        if type == 'ERROR':
+            text = f"#! {text}"
+
+        elif type == 'INPUT':
             if text.startswith(PROMPT):
                 text = text[len(PROMPT):]
             elif text.startswith(PROMPT_MULTI):
                 text = text[len(PROMPT_MULTI):]
         elif type == 'OUTPUT':
-            text = "#~ " + text
-        elif type == 'ERROR':
-            text = "#! " + text
-
+            text = f"#~ {text}"
         lines.append(text)
 
     context.window_manager.clipboard = "\n".join(lines)
@@ -319,11 +318,10 @@ def banner(context):
     version_string = sys.version.strip().replace('\n', ' ')
 
     message = (
-        "PYTHON INTERACTIVE CONSOLE %s" % version_string,
+        f"PYTHON INTERACTIVE CONSOLE {version_string}",
         "",
         "Builtin Modules:       "
         "bpy, bpy.data, bpy.ops, bpy.props, bpy.types, bpy.context, bpy.utils, bgl, gpu, blf, mathutils",
-
         "Convenience Imports:   from mathutils import *; from math import *",
         "Convenience Variables: C = bpy.context, D = bpy.data",
         "",

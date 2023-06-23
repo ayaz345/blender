@@ -12,13 +12,11 @@ _FAKE_STRUCT_SUBCLASS = True
 
 def _get_direct_attr(rna_type, attr):
     props = getattr(rna_type, attr)
-    base = rna_type.base
-
-    if not base:
-        return [prop for prop in props]
-    else:
+    if base := rna_type.base:
         props_base = getattr(base, attr).values()
         return [prop for prop in props if prop not in props_base]
+    else:
+        return list(props)
 
 
 def get_direct_properties(rna_type):
@@ -39,11 +37,7 @@ def rna_id_ignore(rna_id):
         return True
     if "_PT_" in rna_id:
         return True
-    if "_HT_" in rna_id:
-        return True
-    if "_KSI_" in rna_id:
-        return True
-    return False
+    return True if "_HT_" in rna_id else "_KSI_" in rna_id
 
 
 def range_str(val):
@@ -168,18 +162,19 @@ class InfoStructRNA:
         attrs = []
         py_class = self.py_class
 
-        for attr_str in dir(py_class):
-            if attr_str.startswith("_"):
-                continue
-            attrs.append((attr_str, getattr(py_class, attr_str)))
+        attrs.extend(
+            (attr_str, getattr(py_class, attr_str))
+            for attr_str in dir(py_class)
+            if not attr_str.startswith("_")
+        )
         return attrs
 
     def get_py_properties(self):
-        properties = []
-        for identifier, attr in self._get_py_visible_attrs():
-            if type(attr) is property:
-                properties.append((identifier, attr))
-        return properties
+        return [
+            (identifier, attr)
+            for identifier, attr in self._get_py_visible_attrs()
+            if type(attr) is property
+        ]
 
     def get_py_functions(self):
         import types
@@ -207,19 +202,19 @@ class InfoStructRNA:
 
     def get_py_c_properties_getset(self):
         import types
-        properties_getset = []
-        for identifier, descr in self.py_class.__dict__.items():
-            if type(descr) == types.GetSetDescriptorType:
-                properties_getset.append((identifier, descr))
-        return properties_getset
+        return [
+            (identifier, descr)
+            for identifier, descr in self.py_class.__dict__.items()
+            if type(descr) == types.GetSetDescriptorType
+        ]
 
     def __str__(self):
 
         txt = ""
         txt += self.identifier
         if self.base:
-            txt += "(%s)" % self.base.identifier
-        txt += ": " + self.description + "\n"
+            txt += f"({self.base.identifier})"
+        txt += f": {self.description}" + "\n"
 
         for prop in self.properties:
             txt += prop.__repr__() + "\n"
@@ -280,8 +275,7 @@ class InfoPropertyRNA:
         self.is_argument_optional = rna_prop.is_argument_optional
 
         self.type = rna_prop.type.lower()
-        fixed_type = getattr(rna_prop, "fixed_type", "")
-        if fixed_type:
+        if fixed_type := getattr(rna_prop, "fixed_type", ""):
             self.fixed_type = GetInfoStructRNA(fixed_type)  # valid for pointer/collections
         else:
             self.fixed_type = None
@@ -314,7 +308,8 @@ class InfoPropertyRNA:
                     if dim != 0:
                         self.default = tuple(zip(*((iter(self.default),) * dim)))
                         self.default_str = tuple(
-                            "(%s)" % ", ".join(s for s in b) for b in zip(*((iter(self.default_str),) * dim))
+                            f'({", ".join(b)})'
+                            for b in zip(*((iter(self.default_str),) * dim))
                         )
                 self.default_str = self.default_str[0]
         elif self.type == "enum" and self.is_enum_flag:
@@ -329,30 +324,28 @@ class InfoPropertyRNA:
         elif self.type == "string":
             self.default_str = "\"%s\"" % self.default
         elif self.type == "enum":
-            if self.is_enum_flag:
-                # self.default_str = "%r" % self.default  # repr or set()
-                self.default_str = "{%s}" % repr(list(sorted(self.default)))[1:-1]
-            else:
-                self.default_str = "'%s'" % self.default
+            self.default_str = (
+                "{%s}" % repr(list(sorted(self.default)))[1:-1]
+                if self.is_enum_flag
+                else f"'{self.default}'"
+            )
         elif self.array_length:
-            if self.array_dimensions[1] == 0:  # single dimension array, we already took care of multi-dimensions ones.
-                # special case for floats
+            if self.array_dimensions[1] == 0:
                 if self.type == "float" and len(self.default) > 0:
-                    self.default_str = "(%s)" % ", ".join(float_as_string(f) for f in self.default)
+                    self.default_str = f'({", ".join(float_as_string(f) for f in self.default)})'
                 else:
                     self.default_str = str(self.default)
+        elif self.type == "float":
+            self.default_str = float_as_string(self.default)
         else:
-            if self.type == "float":
-                self.default_str = float_as_string(self.default)
-            else:
-                self.default_str = str(self.default)
+            self.default_str = str(self.default)
 
         self.srna = GetInfoStructRNA(rna_prop.srna)  # valid for pointer/collections
 
     def get_arg_default(self, force=True):
         default = self.default_str
         if default and (force or self.is_required is False):
-            return "%s=%s" % (self.identifier, default)
+            return f"{self.identifier}={default}"
         return self.identifier
 
     def get_type_description(

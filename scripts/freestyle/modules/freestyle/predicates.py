@@ -416,7 +416,9 @@ class pyIsOccludedByUP1D(UnaryPredicate1D):
     def __init__(self, id):
         UnaryPredicate1D.__init__(self)
         if not isinstance(id, Id):
-            raise TypeError("pyIsOccludedByUP1D expected freestyle.types.Id, not " + type(id).__name__)
+            raise TypeError(
+                f"pyIsOccludedByUP1D expected freestyle.types.Id, not {type(id).__name__}"
+            )
         self._id = id
 
     def __call__(self, inter):

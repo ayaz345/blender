@@ -26,7 +26,7 @@ print(mat_out2)
 mat = mathutils.Matrix()
 mat[0][0], mat[1][0], mat[2][0] = 0.0, 1.0, 2.0
 
-mat[0][0:3] = 0.0, 1.0, 2.0
+mat[0][:3] = 0.0, 1.0, 2.0
 
 # each item in a matrix is a vector so vector utility functions can be used
 mat[0].xyz = 0.0, 1.0, 2.0

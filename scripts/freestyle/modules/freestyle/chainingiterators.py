@@ -227,9 +227,7 @@ class pySketchyChainSilhouetteIterator(ChainingIterator):
         """
         if ve is None:
             ve = self.current_edge
-        if ve.chaining_time_stamp == self._timeStamp:
-            return None
-        return ve
+        return None if ve.chaining_time_stamp == self._timeStamp else ve
 
     def traverse(self, iter):
         it = AdjacencyIterator(iter)
@@ -293,9 +291,7 @@ class pySketchyChainingIterator(ChainingIterator):
 
         if winner is None:
             winner = self.current_edge
-        if winner.chaining_time_stamp == self._timeStamp:
-            return None
-        return winner
+        return None if winner.chaining_time_stamp == self._timeStamp else winner
 
 
 class pyFillOcclusionsRelativeChainingIterator(ChainingIterator):
@@ -624,8 +620,6 @@ class pyNoIdChainSilhouetteIterator(ChainingIterator):
                 vB = ve.first_fedge.first_svertex
                 if vA.id.first == vB.id.first:
                     return ve
-            return None
-        # case of NonTVertex
         else:
             for i, nat in enumerate(NATURES):
                 if (nat & self.current_edge.nature):
@@ -640,4 +634,5 @@ class pyNoIdChainSilhouetteIterator(ChainingIterator):
 
                             winner = ve
                     return winner
-            return None
+
+        return None

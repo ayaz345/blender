@@ -35,11 +35,9 @@ class ReleaseLogLine:
             issue_tokens = items[1].strip().split("#")
             if len(issue_tokens[0]) > 0:
                 self.issue_repo = issue_tokens[0]
-                self.issue_id = issue_tokens[1]
             else:
                 self.issue_repo = "blender/blender"
-                self.issue_id = issue_tokens[1]
-
+            self.issue_id = issue_tokens[1]
             self.ref = f"#{self.issue_id}"
             self.url = f"{base_url}/{self.issue_repo}/issues/{self.issue_id}"
         except IndexError:
@@ -97,7 +95,7 @@ class ReleaseLogLine:
 def format_title(title: str) -> str:
     title = title.strip()
     if not title.endswith("."):
-        title = title + "."
+        title += "."
     return title
 
 
@@ -113,7 +111,7 @@ def extract_release_notes(version: str, issue: str):
        line.
     """
     base_url = "https://projects.blender.org/api/v1/repos"
-    issues_url = base_url + "/blender/blender/issues/"
+    issues_url = f"{base_url}/blender/blender/issues/"
     headers = {'accept': 'application/json'}
 
     response = requests.get(issues_url + issue[1:], headers=headers)
@@ -137,7 +135,7 @@ def extract_release_notes(version: str, issue: str):
             issue_url = f"{base_url}/{log_line.issue_repo}/issues/{log_line.issue_id}"
             response = requests.get(issue_url, headers=headers)
             if response.status_code != 200:
-                raise ValueError("Issue not found: " + str(log_line.issue_id))
+                raise ValueError(f"Issue not found: {str(log_line.issue_id)}")
 
             log_line.title = format_title(response.json()["title"])
             yield log_line
@@ -145,7 +143,7 @@ def extract_release_notes(version: str, issue: str):
             commit_url = f"{base_url}/{log_line.commit_repo}/git/commits/{log_line.commit_id}"
             response = requests.get(commit_url, headers=headers)
             if response.status_code != 200:
-                raise ValueError("Commit not found: " + log_line.commit_id)
+                raise ValueError(f"Commit not found: {log_line.commit_id}")
 
             commit_message = response.json()['commit']['message']
             commit_title = commit_message.split("\n")[0]
@@ -159,11 +157,11 @@ def print_notes(version: str, format: str, issue: str):
     """
     if format == 'html':
         print("<ul>")
-    if format == 'steam':
+    elif format == 'steam':
         print("[ul]")
     for log_item in extract_release_notes(version=version, issue=issue):
         print(log_item.format(format=format))
     if format == 'html':
         print("</ul>")
-    if format == 'steam':
+    elif format == 'steam':
         print("[/ul]")

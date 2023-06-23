@@ -90,9 +90,7 @@ class JSONEncoderAPIDump(json.JSONEncoder):
     def default(self, o):
         if o is ...:
             return "..."
-        if isinstance(o, set):
-            return tuple(o)
-        return json.JSONEncoder.default(self, o)
+        return tuple(o) if isinstance(o, set) else json.JSONEncoder.default(self, o)
 
 
 def api_dump(args):
@@ -115,7 +113,7 @@ def api_dump(args):
             continue
 
         for base in struct_info.get_bases():
-            struct_id_str = base.identifier + "." + struct_id_str
+            struct_id_str = f"{base.identifier}.{struct_id_str}"
 
         dump_class = dump_module[struct_id_str] = {}
 
@@ -167,9 +165,9 @@ def api_dump(args):
         funcs = [(func.identifier, func) for func in struct_info.functions]
         for func_id, func in funcs:
 
-            func_ret_types = tuple([prop.type for prop in func.return_values])
-            func_args_ids = tuple([prop.identifier for prop in func.args])
-            func_args_type = tuple([prop.type for prop in func.args])
+            func_ret_types = tuple(prop.type for prop in func.return_values)
+            func_args_ids = tuple(prop.identifier for prop in func.args)
+            func_args_type = tuple(prop.type for prop in func.args)
 
             dump_class[func_id] = (
                 "func_rna",                 # basic_type
@@ -258,7 +256,9 @@ def api_changelog(args):
     if filepath_in_to is None:
         filepath_in_to = index.get(version_key, None)
     if filepath_in_to is None:
-        raise ValueError("Cannot find API dump file for Blender version " + str(version) + " in index file.")
+        raise ValueError(
+            f"Cannot find API dump file for Blender version {str(version)} in index file."
+        )
 
     print("Found to file: %r" % filepath_in_to)
 
@@ -366,7 +366,7 @@ def api_changelog(args):
 
         for mod_id, class_id, props_moved, props_new, props_old, func_args in api_changes:
             class_name = class_id.split(".")[-1]
-            title = mod_id + "." + class_name
+            title = f"{mod_id}.{class_name}"
             write_title(title, "-")
 
             if props_new:
@@ -405,14 +405,10 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
-    if "--" not in argv:
-        argv = []  # as if no args are passed
-    else:
-        argv = argv[argv.index("--") + 1:]  # get all args after "--"
-
+    argv = [] if "--" not in argv else argv[argv.index("--") + 1:]
     # When --help or no args are given, print this help
     usage_text = "Run blender in background mode with this script: "
-    "blender --background --factory-startup --python %s -- [options]" % os.path.basename(__file__)
+    f"blender --background --factory-startup --python {os.path.basename(__file__)} -- [options]"
 
     parser = argparse.ArgumentParser(description=usage_text,
                                      epilog=__doc__,

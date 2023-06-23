@@ -129,9 +129,7 @@ def draw(layout, context, context_member, property_type, *, use_edit=True):
 
     assert isinstance(rna_item, property_type)
 
-    items = list(rna_item.items())
-    items.sort()
-
+    items = sorted(rna_item.items())
     # TODO: Allow/support adding new custom props to overrides.
     if use_edit and not is_lib_override:
         row = layout.row()
@@ -177,7 +175,7 @@ def draw(layout, context, context_member, property_type, *, use_edit=True):
             props.data_path = context_member
             props.property_name = key
         else:
-            value_column.prop(rna_item, '["%s"]' % escape_identifier(key), text="")
+            value_column.prop(rna_item, f'["{escape_identifier(key)}"]', text="")
 
         operator_row = value_row.row()
         operator_row.alignment = 'RIGHT'

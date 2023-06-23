@@ -142,11 +142,7 @@ def modules_refresh(*, module_cache=addons_fake_modules):
     for path in path_list:
 
         # force all contrib addons to be 'TESTING'
-        if path.endswith(("addons_contrib", )):
-            force_support = 'TESTING'
-        else:
-            force_support = None
-
+        force_support = 'TESTING' if path.endswith(("addons_contrib", )) else None
         for mod_name, mod_path in _bpy.path.module_names(path):
             modules_stale.discard(mod_name)
             mod = module_cache.get(mod_name)
@@ -251,8 +247,7 @@ def _addon_remove(module_name):
     addons = _preferences.addons
 
     while module_name in addons:
-        addon = addons.get(module_name)
-        if addon:
+        if addon := addons.get(module_name):
             addons.remove(addon)
 
 
@@ -341,7 +336,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             # if the addon doesn't exist, don't print full traceback
             if type(ex) is ImportError and ex.name == module_name:
                 print("addon not loaded:", repr(module_name))
-                print("cause:", str(ex))
+                print("cause:", ex)
             else:
                 handle_error(ex)
 
@@ -354,7 +349,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
 
         if mod.bl_info.get("blender", (0, 0, 0)) < (2, 80, 0):
             if _bpy.app.debug:
-                print("Warning: Add-on '%s' was not upgraded for 2.80, ignoring" % module_name)
+                print(f"Warning: Add-on '{module_name}' was not upgraded for 2.80, ignoring")
             return None
 
         # 2) Try register collected modules.
@@ -426,9 +421,7 @@ def disable(module_name, *, default_set=False, handle_error=None):
             handle_error(ex)
     else:
         print(
-            "addon_utils.disable: %s not %s" % (
-                module_name,
-                "disabled" if mod is None else "loaded")
+            f'addon_utils.disable: {module_name} not {"disabled" if mod is None else "loaded"}'
         )
 
     # could be in more than once, unlikely but better do this just in case.
@@ -459,8 +452,7 @@ def reset_all(*, reload_scripts=False):
             # first check if reload is needed before changing state.
             if reload_scripts:
                 import importlib
-                mod = sys.modules.get(mod_name)
-                if mod:
+                if mod := sys.modules.get(mod_name):
                     importlib.reload(mod)
 
             if is_enabled == is_loaded:
@@ -521,8 +513,7 @@ def module_bl_info(mod, *, info_basis=None):
     if not addon_info["name"]:
         addon_info["name"] = mod.__name__
 
-    doc_url = addon_info["doc_url"]
-    if doc_url:
+    if doc_url := addon_info["doc_url"]:
         doc_url_prefix = "{BLENDER_MANUAL_URL}"
         if doc_url_prefix in doc_url:
             addon_info["doc_url"] = doc_url.replace(

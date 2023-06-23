@@ -45,10 +45,7 @@ class OBJECT_PT_property_example(bpy.types.Panel):
         props.my_string = "Shouldn't that be 47?"
 
         # You can set properties dynamically:
-        if context.object:
-            props.my_float = context.object.location.x
-        else:
-            props.my_float = 327
+        props.my_float = context.object.location.x if context.object else 327
 
 
 bpy.utils.register_class(OBJECT_OT_property_example)

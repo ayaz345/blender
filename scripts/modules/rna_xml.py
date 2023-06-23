@@ -19,13 +19,11 @@ def build_property_typemap(skip_classes, skip_typemap):
         if bl_rna is None:
             continue
 
-        # # to support skip-save we can't get all props
-        # properties = bl_rna.properties.keys()
-        properties = []
-        for prop_id, prop in bl_rna.properties.items():
-            if not prop.is_skip_save:
-                properties.append(prop_id)
-
+        properties = [
+            prop_id
+            for prop_id, prop in bl_rna.properties.items()
+            if not prop.is_skip_save
+        ]
         properties.remove("rna_type")
         property_typemap[attr] = properties
 
@@ -37,9 +35,9 @@ def build_property_typemap(skip_classes, skip_typemap):
                     try:
                         properties.remove(prop_id)
                     except:
-                        print("skip_typemap unknown prop_id '%s.%s'" % (cls_name, prop_id))
+                        print(f"skip_typemap unknown prop_id '{cls_name}.{prop_id}'")
             else:
-                print("skip_typemap unknown class '%s'" % cls_name)
+                print(f"skip_typemap unknown class '{cls_name}'")
 
     return property_typemap
 
@@ -89,7 +87,7 @@ def rna2xml(
         elif val_type == bool:
             return "TRUE" if val else "FALSE"
         else:
-            raise NotImplementedError("this type is not a number %s" % val_type)
+            raise NotImplementedError(f"this type is not a number {val_type}")
 
     def rna2xml_node(ident, value, parent):
         ident_next = ident + ident_val
@@ -117,14 +115,16 @@ def rna2xml(
             if subvalue_type in {int, bool, float}:
                 node_attrs.append("%s=\"%s\"" % (prop, number_to_str(subvalue, subvalue_type)))
             elif subvalue_type is str:
-                node_attrs.append("%s=%s" % (prop, quoteattr(subvalue)))
+                node_attrs.append(f"{prop}={quoteattr(subvalue)}")
             elif subvalue_type is set:
                 node_attrs.append("%s=%s" % (prop, quoteattr("{" + ",".join(list(subvalue)) + "}")))
             elif subvalue is None:
                 node_attrs.append("%s=\"NONE\"" % prop)
             elif issubclass(subvalue_type, referenced_classes):
                 # special case, ID's are always referenced.
-                node_attrs.append("%s=%s" % (prop, quoteattr(subvalue_type.__name__ + "::" + subvalue.name)))
+                node_attrs.append(
+                    f'{prop}={quoteattr(f"{subvalue_type.__name__}::{subvalue.name}")}'
+                )
             else:
                 try:
                     subvalue_ls = list(subvalue)
@@ -243,7 +243,7 @@ def xml2rna(
             subvalue = getattr(value, attr, Ellipsis)
 
             if subvalue is Ellipsis:
-                print("%s.%s not found" % (type(value).__name__, attr))
+                print(f"{type(value).__name__}.{attr} not found")
             else:
                 value_xml = xml_node.attributes[attr].value
 
@@ -328,9 +328,6 @@ def xml2rna(
 
                             # print(child_xml_real, subvalue)
                             rna2xml_node(child_xml_real, subvalue)
-                        else:
-                            # empty is valid too
-                            pass
 
     rna2xml_node(root_xml, root_rna)
 

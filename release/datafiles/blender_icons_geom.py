@@ -76,7 +76,7 @@ class TriMesh:
         bm = bmesh.new()
         bm.from_mesh(ob.to_mesh())
         bmesh.ops.triangulate(bm, faces=bm.faces)
-        me = bpy.data.meshes.new(ob.name + ".copy")
+        me = bpy.data.meshes.new(f"{ob.name}.copy")
         bm.to_mesh(me)
         bm.free()
         ob.to_mesh_clear()
@@ -131,20 +131,20 @@ def mesh_data_lists_from_mesh(me, material_colors):
 
     tris_data = []
 
+    i0 = 0
     for p in me_polys:
         # Note, all faces are handled, backfacing/zero area is checked just before writing.
         material_index = p.material_index
-        if material_index < len(material_colors):
-            base_color = material_colors[p.material_index]
-        else:
-            base_color = (1.0, 1.0, 1.0, 1.0)
-
+        base_color = (
+            material_colors[p.material_index]
+            if material_index < len(material_colors)
+            else (1.0, 1.0, 1.0, 1.0)
+        )
         l_sta = p.loop_start
         l_len = p.loop_total
         loops_poly = me_loops[l_sta:l_sta + l_len]
         if me_loops_color is not None:
             color_poly = me_loops_color[l_sta:l_sta + l_len]
-        i0 = 0
         i1 = 1
 
         # we only write tris now
@@ -318,10 +318,7 @@ def main():
     import os
     import sys
     parser = create_argparse()
-    if "--" in sys.argv:
-        argv = sys.argv[sys.argv.index("--") + 1:]
-    else:
-        argv = []
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     args = parser.parse_args(argv)
 
     objects = []
@@ -363,7 +360,7 @@ def main():
     for name, ob in objects:
         if ob.parent:
             continue
-        filename = os.path.join(args.output_dir, name + ".dat")
+        filename = os.path.join(args.output_dir, f"{name}.dat")
         with open(filename, 'wb') as fh:
             write_mesh_to_py(fh, ob, objects_children.get(ob, []))
 

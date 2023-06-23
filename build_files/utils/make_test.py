@@ -60,7 +60,7 @@ if not os.path.exists(lib_tests_dirpath):
         sys.stderr.write("cmake not found, can't checkout test files\n")
         sys.exit(1)
 
-    svn_url = make_utils.svn_libraries_base_url(release_version) + "/tests"
+    svn_url = f"{make_utils.svn_libraries_base_url(release_version)}/tests"
     call([svn_command, "checkout", svn_url, lib_tests_dirpath])
 
     # Run cmake again to detect tests files.
@@ -75,7 +75,7 @@ os.chdir(build_dir)
 command = [ctest_command, ".", "--output-on-failure"]
 if len(config):
     command += ["-C", config]
-    tests_log = "log_" + config + ".txt"
+    tests_log = f"log_{config}.txt"
 else:
     tests_log = "log.txt"
 command += ["-O", os.path.join(tests_dir, tests_log)]

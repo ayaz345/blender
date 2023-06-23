@@ -152,28 +152,30 @@ def ui_draw_filter_register(
             # simple, no wrapping
             return func_orig(self_real, context)
 
+
+
         class Wrapper(cls_real):
             __slots__ = ()
 
             def __getattribute__(self, attr):
                 if attr == "layout":
                     return UILayout_Fake(self_real.layout)
-                else:
-                    cls = super()
+                cls = super()
+                try:
+                    return cls.__getattr__(self, attr)
+                except AttributeError:
+                    # class variable
                     try:
-                        return cls.__getattr__(self, attr)
+                        return getattr(cls, attr)
                     except AttributeError:
-                        # class variable
-                        try:
-                            return getattr(cls, attr)
-                        except AttributeError:
-                            # for preset bl_idname access
-                            return getattr(UILayout(self), attr)
+                        # for preset bl_idname access
+                        return getattr(UILayout(self), attr)
 
             @property
             def layout(self):
                 # print("wrapped")
                 return self_real.layout
+
 
         return func_orig(Wrapper(self_real), context)
 

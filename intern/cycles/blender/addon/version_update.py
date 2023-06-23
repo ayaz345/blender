@@ -48,17 +48,16 @@ def custom_bake_remap(scene):
     bake_type = bake_lookup[bake_type_idx]
     cscene.bake_type, end = bake_type.split('_')
 
-    if end == 'DIRECT':
+    if end == 'COLOR':
+        scene.render.bake.use_pass_direct = False
+        scene.render.bake.use_pass_indirect = False
+    elif end == 'DIRECT':
         scene.render.bake.use_pass_indirect = False
         scene.render.bake.use_pass_color = False
 
     elif end == 'INDIRECT':
         scene.render.bake.use_pass_direct = False
         scene.render.bake.use_pass_color = False
-
-    elif end == 'COLOR':
-        scene.render.bake.use_pass_direct = False
-        scene.render.bake.use_pass_indirect = False
 
 
 @persistent
@@ -69,9 +68,7 @@ def do_versions(self):
         if not prop.is_property_set("compute_device_type"):
             # Device might not currently be available so this can fail
             try:
-                if system.legacy_compute_device_type == 1:
-                    prop.compute_device_type = 'NONE'  # Was OpenCL
-                elif system.legacy_compute_device_type == 2:
+                if system.legacy_compute_device_type == 2:
                     prop.compute_device_type = 'CUDA'
                 else:
                     prop.compute_device_type = 'NONE'
@@ -93,8 +90,7 @@ def do_versions(self):
         return
 
     # Map of versions used by libraries.
-    library_versions = {}
-    library_versions[bpy.data.version] = [None]
+    library_versions = {bpy.data.version: [None]}
     for library in bpy.data.libraries:
         library_versions.setdefault(library.version, []).append(library)
 
@@ -232,9 +228,9 @@ def do_versions(self):
 
                 # Removal of square samples.
                 cscene = scene.cycles
-                use_square_samples = cscene.get("use_square_samples", False)
-
-                if use_square_samples:
+                if use_square_samples := cscene.get(
+                    "use_square_samples", False
+                ):
                     cscene.samples *= cscene.samples
                     cscene.preview_samples *= cscene.preview_samples
                     for layer in scene.view_layers:
